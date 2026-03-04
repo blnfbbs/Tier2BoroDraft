@@ -1,0 +1,6374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Draft HQ">
+  <title>⚾ Homers Draft HQ 2026</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #07080e; overflow-x: hidden; }
+    body { -webkit-text-size-adjust: 100%; }
+    * { -webkit-tap-highlight-color: transparent; }
+    * { -webkit-overflow-scrolling: touch; }
+    #root { height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { useState, useMemo } = React;
+const MY_TEAM = "Homers";
+const NUM_TEAMS = 12;
+const MY_SLOT = 2;
+const KEEPER_ROUNDS = 5;
+const TOTAL_ROUNDS = 19;
+const POSITIONS = ["C", "1B", "2B", "3B", "SS", "OF", "DH", "SP", "RP"];
+const ROSTER_NEEDS = {
+  C: 1,
+  "1B": 1,
+  "2B": 1,
+  "3B": 1,
+  SS: 1,
+  OF: 3,
+  DH: 1,
+  SP: 3,
+  RP: 2
+};
+const HIT_CATS = ["hr", "r", "rbi", "sb", "ba"];
+const PIT_CATS = ["era", "k", "w", "sv", "whip"];
+const ALL_CATS = [...HIT_CATS, ...PIT_CATS];
+const CAT_LABELS = {
+  hr: "HR",
+  r: "R",
+  rbi: "RBI",
+  sb: "SB",
+  ba: "AVG",
+  era: "ERA",
+  k: "K",
+  w: "W",
+  sv: "SV",
+  whip: "WHIP"
+};
+const LOWER_IS_BETTER = new Set(["era", "whip"]);
+const CAT_AVG = {
+  hr: 18,
+  r: 70,
+  rbi: 70,
+  sb: 10,
+  ba: .262,
+  era: 3.85,
+  k: 160,
+  w: 10,
+  sv: 12,
+  whip: 1.28
+};
+
+// ── Age & Dynasty/Keeper Value ────────────────────────────────────
+// age as of Apr 1 2026. dynRank = consensus dynasty/keeper rank (CBS/Razzball/FantraxHQ/BA).
+// keeperTier: S=multi-year anchor, A=strong keeper, B=solid keeper, C=1yr value, D=age/injury risk
+// prospect flag: true = not yet MLB-proven, draft for future keeper value
+const PLAYER_META = {
+  // S-tier keepers — young stars, 5+ keeper years ahead
+  "Z Neto": {
+    age: 24,
+    dynRank: 22,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "Elite age/skill combo; top SS dynasty asset"
+  },
+  "M Harris II": {
+    age: 24,
+    dynRank: 28,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "24yo with elite tools; strong keeper upside"
+  },
+  "J Duran": {
+    age: 26,
+    dynRank: 35,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "Prime age; speed/OBP asset for years"
+  },
+  "S Stewart": {
+    age: 22,
+    dynRank: 18,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "22yo debut star; elite Statcast; top keeper"
+  },
+  "N Marte": {
+    age: 23,
+    dynRank: 38,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "23yo power/speed; CIN lineup asset"
+  },
+  "H Greene": {
+    age: 26,
+    dynRank: 30,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "Peak age; elite K-arm; 5+ keeper years"
+  },
+  "C Ragans": {
+    age: 27,
+    dynRank: 42,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Prime SP; elite SwStr% dynasty asset"
+  },
+  "O Cruz": {
+    age: 26,
+    dynRank: 40,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "Freakish tools; 26yo; power/speed rare combo"
+  },
+  "J Holliday": {
+    age: 22,
+    dynRank: 25,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "Top prospect; hamate injury; long-term top-10 dynasty 2B"
+  },
+  "L Keaschall": {
+    age: 23,
+    dynRank: 45,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "23yo prospect; speed/OBP; keeper gem"
+  },
+  "D Lile": {
+    age: 22,
+    dynRank: 50,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "Top prospect; 22yo; 20/20 upside OF"
+  },
+  "D Crews": {
+    age: 23,
+    dynRank: 48,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "23yo; 20/20 upside; WSN OF of future"
+  },
+  "K Stowers": {
+    age: 26,
+    dynRank: 80,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Breakout; prime age; dynasty sleeper OF"
+  },
+  "J Adell": {
+    age: 26,
+    dynRank: 60,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Tools finally emerging; 26yo; keep"
+  },
+  "J Westburg": {
+    age: 26,
+    dynRank: 65,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Multi-pos; prime age; 3B/2B flexibility"
+  },
+  "C Burns": {
+    age: 24,
+    dynRank: 55,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "24yo electric arm; dynasty SP anchor"
+  },
+  "E Sheehan": {
+    age: 25,
+    dynRank: 62,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo; elite slider; LAD development"
+  },
+  "C Horton": {
+    age: 23,
+    dynRank: 52,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "23yo top pitching prospect; CHC"
+  },
+  "J Misiorowski": {
+    age: 25,
+    dynRank: 58,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo; elite stuff; bounce candidate"
+  },
+  "T Story": {
+    age: 33,
+    dynRank: 120,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "Age 33; health concern; 1-2yr value only"
+  },
+  "B Chandler": {
+    age: 24,
+    dynRank: 70,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo; elite secondaries; dynasty SP"
+  },
+  "R Anthony": {
+    age: 21,
+    dynRank: 15,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "21yo elite prospect; BOS OF future; top-15 dynasty"
+  },
+  "K Griffin": {
+    age: 21,
+    dynRank: 20,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "21yo top prospect; PIT SS; could be #1 dynasty SS"
+  },
+  "J Marsee": {
+    age: 23,
+    dynRank: 75,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "23yo speed prospect; SB ceiling 40+"
+  },
+  "B Doyle": {
+    age: 26,
+    dynRank: 85,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Prime age; Coors SB/HR combo asset"
+  },
+  "C Simpson": {
+    age: 24,
+    dynRank: 90,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Elite speed; 40+ SB ceiling; young"
+  },
+  "V Scott II": {
+    age: 24,
+    dynRank: 95,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "Elite SB tool; 24yo; dynasty SB asset"
+  },
+  "H Ramos": {
+    age: 25,
+    dynRank: 82,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo breakout; improving tools; keep"
+  },
+  "K Manzardo": {
+    age: 24,
+    dynRank: 100,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo power; improving; CLE 1B future"
+  },
+  "C Durbin": {
+    age: 23,
+    dynRank: 105,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "23yo prospect; improving contact"
+  },
+  "T Yesavage": {
+    age: 22,
+    dynRank: 35,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "22yo; top pitching prospect; TOR; dynasty gem"
+  },
+  "Z Matthews": {
+    age: 24,
+    dynRank: 88,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo emerging SP; MIN"
+  },
+  "C Rodon": {
+    age: 33,
+    dynRank: 140,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "Age 33; win-now value only"
+  },
+  "A Rutschman": {
+    age: 28,
+    dynRank: 72,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "28yo C; prime years ahead; dynasty C1"
+  },
+  "H Goodman": {
+    age: 26,
+    dynRank: 88,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "26yo; Coors C with power; keeper value"
+  },
+  "A Ramirez": {
+    age: 22,
+    dynRank: 68,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "22yo top C prospect; bat-first; dynasty C"
+  },
+  "D Baldwin": {
+    age: 23,
+    dynRank: 78,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "23yo C prospect; ATL; developing bat"
+  },
+  "I Herrera": {
+    age: 25,
+    dynRank: 92,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo; elite contact; C eligibility asset"
+  },
+  "S Langeliers": {
+    age: 28,
+    dynRank: 98,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; power upside but narrow keeper window"
+  },
+  "W Contreras": {
+    age: 28,
+    dynRank: 102,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; elite contact C; 3-4yr value"
+  },
+  "M McLain": {
+    age: 26,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "26yo; multi-pos 2B/SS; CIN"
+  },
+  "N Schanuel": {
+    age: 24,
+    dynRank: 112,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "24yo; 1B developing; patient hitter"
+  },
+  "M Winn": {
+    age: 25,
+    dynRank: 115,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "25yo; STL SS; SB upside"
+  },
+  "J Polanco": {
+    age: 32,
+    dynRank: 145,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "Age 32; 1-2yr window at best"
+  },
+  // A-tier — solid dynasty value, 3-5 keeper years
+  "M Fried": {
+    age: 32,
+    dynRank: 38,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "Age 32; win-now SP; 2-3yr window"
+  },
+  "G Kirby": {
+    age: 27,
+    dynRank: 32,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "27yo elite SP; peak years; keep 4+ yrs"
+  },
+  "F Valdez": {
+    age: 32,
+    dynRank: 48,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "Age 32; consistent; 2-3yr window"
+  },
+  "Z Wheeler": {
+    age: 35,
+    dynRank: 85,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "Age 35; win-now only; 1-2yr max"
+  },
+  "G Cole": {
+    age: 35,
+    dynRank: 90,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "Age 35; elite but short keeper runway"
+  },
+  "D Cease": {
+    age: 30,
+    dynRank: 55,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; K upside; 3-4yr keeper window"
+  },
+  "B Snell": {
+    age: 33,
+    dynRank: 92,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "Age 33; inconsistent; win-now value"
+  },
+  "C Seager": {
+    age: 32,
+    dynRank: 72,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "32yo; elite when healthy; injury risk"
+  },
+  "J deGrom": {
+    age: 37,
+    dynRank: 180,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "Age 37; TJ history; not a keeper target"
+  },
+  "M Miller": {
+    age: 26,
+    dynRank: 28,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "26yo elite closer; top RP dynasty asset"
+  },
+  "C Smith": {
+    age: 28,
+    dynRank: 45,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "28yo emerging closer; strong keeper RP"
+  },
+  "J Hader": {
+    age: 32,
+    dynRank: 65,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "32yo; elite but aging closer; 2-3yr"
+  },
+  "Jh Duran": {
+    age: 27,
+    dynRank: 38,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "27yo elite PHI closer; prime years"
+  },
+  "D Williams": {
+    age: 31,
+    dynRank: 78,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "31yo; elite stuff closer; 2-3yr value"
+  },
+  "R Helsley": {
+    age: 31,
+    dynRank: 82,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "31yo; BAL closer; 2-3yr window"
+  },
+  "A Chapman": {
+    age: 38,
+    dynRank: 200,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "Age 38; do NOT keep past 2026"
+  },
+  "J Hoffman": {
+    age: 27,
+    dynRank: 55,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "27yo new TOR closer; strong dynasty RP"
+  },
+  "D Bednar": {
+    age: 30,
+    dynRank: 95,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; solid closer; 2-3yr window"
+  },
+  "G Jax": {
+    age: 30,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; TB closer; 2-3yr"
+  },
+  "R Iglesias": {
+    age: 32,
+    dynRank: 118,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "32yo; ATL closer; 1-2yr window"
+  },
+  "C Estevez": {
+    age: 31,
+    dynRank: 125,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; KC closer; aging"
+  },
+  "T Megill": {
+    age: 31,
+    dynRank: 128,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; MIL closer; 1-2yr"
+  },
+  "J Abreu": {
+    age: 28,
+    dynRank: 110,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo MIL closer; prime years"
+  },
+  // B-tier hitters
+  "T Turner": {
+    age: 32,
+    dynRank: 48,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "32yo; elite but aging; 2-3yr keep"
+  },
+  "A Riley": {
+    age: 29,
+    dynRank: 40,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "29yo prime 3B; 4-5yr keeper window"
+  },
+  "C Bellinger": {
+    age: 30,
+    dynRank: 62,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; NYY OF; 2-3yr value"
+  },
+  "J Pena": {
+    age: 28,
+    dynRank: 68,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo prime SS; 4-5yr window"
+  },
+  "B Bichette": {
+    age: 28,
+    dynRank: 72,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; NYM SS; prime years"
+  },
+  "J Naylor": {
+    age: 28,
+    dynRank: 58,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "28yo; 30/30 upside; prime years"
+  },
+  "M Olson": {
+    age: 32,
+    dynRank: 78,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "32yo; elite HR/RBI; 2-3yr window"
+  },
+  "S Kwan": {
+    age: 28,
+    dynRank: 88,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; elite contact; prime years"
+  },
+  "C Yelich": {
+    age: 34,
+    dynRank: 112,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "34yo; declining; 1-2yr value"
+  },
+  "X Edwards": {
+    age: 26,
+    dynRank: 92,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "26yo SB machine; dynasty SB asset"
+  },
+  "J Altuve": {
+    age: 35,
+    dynRank: 145,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "Age 35; do not keep long-term"
+  },
+  "M Garcia": {
+    age: 27,
+    dynRank: 82,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "27yo; speed 3B; prime years"
+  },
+  "W Adames": {
+    age: 30,
+    dynRank: 98,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; SF SS; 2-3yr window"
+  },
+  "E Tovar": {
+    age: 24,
+    dynRank: 95,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo SS; COL; speed/BA asset"
+  },
+  "I Paredes": {
+    age: 28,
+    dynRank: 105,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; HOU 3B utility; 3-4yr"
+  },
+  "A Bregman": {
+    age: 32,
+    dynRank: 115,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "32yo; CHC 3B; 1-2yr window"
+  },
+  "A Bohm": {
+    age: 28,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; PHI 3B; 3-4yr value"
+  },
+  "M Chapman": {
+    age: 33,
+    dynRank: 148,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; SF 3B; win-now only"
+  },
+  "N Arenado": {
+    age: 35,
+    dynRank: 200,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "35yo; decline phase; do not keep"
+  },
+  "I Happ": {
+    age: 31,
+    dynRank: 118,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; CHC OF; 1-2yr window"
+  },
+  "T Hernandez": {
+    age: 33,
+    dynRank: 140,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; win-now value only"
+  },
+  "B Reynolds": {
+    age: 30,
+    dynRank: 105,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; PIT OF; 3-4yr value"
+  },
+  "L Robert Jr.": {
+    age: 29,
+    dynRank: 75,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; injury risk but upside; keep 2-3yr"
+  },
+  "R Arozarena": {
+    age: 31,
+    dynRank: 122,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; SEA OF; 1-2yr window"
+  },
+  "C Rafaela": {
+    age: 24,
+    dynRank: 78,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo; speed/2B eligibility; prime ahead"
+  },
+  "G Springer": {
+    age: 37,
+    dynRank: 210,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "37yo; injury prone; do not keep"
+  },
+  "M Trout": {
+    age: 34,
+    dynRank: 155,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "34yo; injury riddled; very high risk keeper"
+  },
+  "J Lee": {
+    age: 29,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; SF OF; 3-4yr window"
+  },
+  "M Ozuna": {
+    age: 35,
+    dynRank: 190,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "35yo; win-now DH; do not keep"
+  },
+  "K Carpenter": {
+    age: 28,
+    dynRank: 112,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; DET OF; prime years"
+  },
+  "J Lowe": {
+    age: 28,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; LAA OF; elite contact"
+  },
+  "B Nimmo": {
+    age: 33,
+    dynRank: 155,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; TEX OF; win-now only"
+  },
+  "M Wallner": {
+    age: 27,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "27yo; MIN OF; prime years"
+  },
+  "J Beck": {
+    age: 25,
+    dynRank: 102,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo; COL OF; power/speed combo"
+  },
+  "J Soler": {
+    age: 35,
+    dynRank: 198,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "35yo; do not keep long-term"
+  },
+  "T Friedl": {
+    age: 29,
+    dynRank: 125,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; CIN OF; speed asset"
+  },
+  "H Ramos": {
+    age: 25,
+    dynRank: 82,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo breakout; SF OF; keep"
+  },
+  // SPs continued
+  "K Bradish": {
+    age: 28,
+    dynRank: 62,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "28yo; BAL SP; elite slider; keep 4yr"
+  },
+  "S Schwellenbach": {
+    age: 25,
+    dynRank: 58,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo ATL SP; dynasty anchor if healthy"
+  },
+  "J Ryan": {
+    age: 29,
+    dynRank: 72,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; MIN SP; 3-4yr window"
+  },
+  "L Webb": {
+    age: 29,
+    dynRank: 68,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; SF SP; elite GB; 3-4yr"
+  },
+  "T Bibee": {
+    age: 27,
+    dynRank: 75,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "27yo; CLE SP; prime years ahead"
+  },
+  "K Gausman": {
+    age: 35,
+    dynRank: 125,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "35yo; win-now SP only"
+  },
+  "S Gray": {
+    age: 37,
+    dynRank: 200,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "37yo; do not keep past 2026"
+  },
+  "N Pivetta": {
+    age: 33,
+    dynRank: 135,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; 1-2yr window"
+  },
+  "M King": {
+    age: 30,
+    dynRank: 98,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; SD SP; 2-3yr value"
+  },
+  "S Imanaga": {
+    age: 32,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "32yo; CHC SP; 2-3yr window"
+  },
+  "J Luzardo": {
+    age: 28,
+    dynRank: 88,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; PHI SP; prime years"
+  },
+  "J Musgrove": {
+    age: 34,
+    dynRank: 155,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "34yo; TJ recovery; do not keep"
+  },
+  "D Rasmussen": {
+    age: 31,
+    dynRank: 118,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; TB SP; 1-2yr"
+  },
+  "E Perez": {
+    age: 22,
+    dynRank: 42,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "22yo; elite stuff; top dynasty SP if healthy"
+  },
+  "B Woodruff": {
+    age: 33,
+    dynRank: 128,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; MIL SP; shoulder; win-now"
+  },
+  "P Lopez": {
+    age: 32,
+    dynRank: 118,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "32yo; MIN SP; 1-2yr value"
+  },
+  "S Strider": {
+    age: 27,
+    dynRank: 45,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "27yo; TJ return; elite upside if healthy"
+  },
+  "S McClanahan": {
+    age: 29,
+    dynRank: 52,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "29yo; TJ return; dynasty SP if healthy"
+  },
+  "T Glasnow": {
+    age: 33,
+    dynRank: 98,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; injury risk; win-now only"
+  },
+  "R Suarez": {
+    age: 30,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; BOS SP; 2-3yr value"
+  },
+  "R Pepiot": {
+    age: 28,
+    dynRank: 102,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; TB SP; prime years"
+  },
+  "S Bieber": {
+    age: 31,
+    dynRank: 115,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; elbow history; limited keeper value"
+  },
+  "G Williams": {
+    age: 28,
+    dynRank: 105,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; CLE SP; 3yr value"
+  },
+  "N McLean": {
+    age: 24,
+    dynRank: 35,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "24yo; elite stuff; NYM dynasty SP anchor"
+  },
+  "B Miller SP": {
+    age: 28,
+    dynRank: 95,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; SEA SP; prime years"
+  },
+  // misc
+  "L Arraez": {
+    age: 29,
+    dynRank: 130,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo BA machine; niche keeper"
+  },
+  "C Walker": {
+    age: 34,
+    dynRank: 158,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "34yo; win-now 1B only"
+  },
+  "Y Diaz": {
+    age: 33,
+    dynRank: 145,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "33yo; win-now 1B"
+  },
+  "A Burleson": {
+    age: 27,
+    dynRank: 112,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "27yo; STL 1B; prime years"
+  },
+  "M Busch": {
+    age: 28,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; CHC 1B; 3-4yr value"
+  },
+  "A Vaughn": {
+    age: 27,
+    dynRank: 115,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "27yo; MIL 1B; prime years"
+  },
+  "S Perez": {
+    age: 36,
+    dynRank: 185,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "36yo; do not keep past 2026"
+  },
+  "W Smith": {
+    age: 30,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; LAD C; 2-3yr value"
+  },
+  "G Moreno": {
+    age: 25,
+    dynRank: 88,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "25yo; ARI C; prime years ahead"
+  },
+  "Y Diaz C": {
+    age: 28,
+    dynRank: 98,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; HOU C; 3-4yr value"
+  },
+  "J Realmuto": {
+    age: 35,
+    dynRank: 178,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "35yo; knee surgery; do not keep"
+  },
+  "B Stott": {
+    age: 27,
+    dynRank: 105,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "27yo; PHI 2B; prime years"
+  },
+  "T Edman": {
+    age: 30,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; LAD 2B/SS; 2-3yr"
+  },
+  "J India": {
+    age: 29,
+    dynRank: 125,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; KC 2B; 3yr window"
+  },
+  "M Semien": {
+    age: 35,
+    dynRank: 182,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "35yo; NYM; do not keep"
+  },
+  "B Donovan": {
+    age: 28,
+    dynRank: 115,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; STL 2B; 3-4yr value"
+  },
+  "O Albies": {
+    age: 29,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; ATL 2B; injury history"
+  },
+  "C Torres": {
+    age: 29,
+    dynRank: 122,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; DET 2B; 3yr value"
+  },
+  "X Bogaerts": {
+    age: 31,
+    dynRank: 130,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; SD SS; 2yr max"
+  },
+  "D Swanson": {
+    age: 32,
+    dynRank: 138,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "32yo; CHC SS; win-now"
+  },
+  "A Volpe": {
+    age: 24,
+    dynRank: 65,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo; NYY SS; prime years ahead"
+  },
+  "C Correa": {
+    age: 31,
+    dynRank: 135,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; back issues; limited keeper value"
+  },
+  "C Montgomery": {
+    age: 23,
+    dynRank: 48,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "23yo breakout SS; CWS dynasty asset"
+  },
+  "M Munetaka": {
+    age: 30,
+    dynRank: 92,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo; CWS 3B; 2-3yr value"
+  },
+  "A Barger": {
+    age: 26,
+    dynRank: 108,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "26yo; TOR 3B; prime years"
+  },
+  "E Suarez": {
+    age: 35,
+    dynRank: 188,
+    keeperTier: "D",
+    prospect: false,
+    dynNote: "35yo; do not keep"
+  },
+  "N Schanuel": {
+    age: 24,
+    dynRank: 112,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "24yo developing 1B"
+  },
+  "M Winn": {
+    age: 25,
+    dynRank: 115,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "25yo STL SS"
+  },
+  "K Finnegan": {
+    age: 32,
+    dynRank: 148,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "32yo; WSN closer; win-now"
+  },
+  "R Walker": {
+    age: 29,
+    dynRank: 118,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo; SF RP; prime years"
+  },
+  "C Montgomery": {
+    age: 23,
+    dynRank: 48,
+    keeperTier: "S",
+    prospect: false,
+    dynNote: "23yo breakout; CWS dynasty SS; top-50 keeper"
+  },
+  "T Bazzana": {
+    age: 22,
+    dynRank: 55,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "22yo; top 2B prospect; CLE; elite contact"
+  },
+  "C Basallo": {
+    age: 20,
+    dynRank: 32,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "20yo; top C prospect BAL; dynasty C1 in 2-3 years"
+  },
+  "J Jenkins": {
+    age: 20,
+    dynRank: 38,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "20yo BOS OF; 20-25 HR ceiling; top dynasty asset"
+  },
+  "C Clark": {
+    age: 20,
+    dynRank: 42,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "20yo DET OF; 20/20 upside; 148 wRC+ 2025"
+  },
+  "E Florentino": {
+    age: 18,
+    dynRank: 60,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "18yo phenom; peak 25/25; long horizon"
+  },
+  "J Miller": {
+    age: 22,
+    dynRank: 65,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "22yo; strong finish 2025; CLE OF sleeper"
+  },
+  "T Okamoto": {
+    age: 30,
+    dynRank: 130,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "30yo NPB import; safer OBP floor; dynasty 3B"
+  },
+  "K Murakami": {
+    age: 29,
+    dynRank: 95,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "29yo NPB star; most hyped Japan import"
+  },
+  "J Williams": {
+    age: 22,
+    dynRank: 50,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "22yo NYM SS prospect; speed/contact gem"
+  },
+  "L Morales": {
+    age: 24,
+    dynRank: 58,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "24yo OAK SP prospect; dynasty upside"
+  },
+  "T Witherspoon": {
+    age: 21,
+    dynRank: 72,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "21yo; 2025 1st rd pick; 5-pitch; long term SP"
+  },
+  "N Imai": {
+    age: 25,
+    dynRank: 40,
+    keeperTier: "S",
+    prospect: true,
+    dynNote: "Top FYPD; elite arsenal; SD development"
+  },
+  "I Seymour": {
+    age: 24,
+    dynRank: 62,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "24yo CIN SP; elite fastball; dynasty arm"
+  },
+  "C Willits": {
+    age: 19,
+    dynRank: 55,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "19yo phenom; youngest full-season 2025; elite tools"
+  },
+  "G Hall": {
+    age: 19,
+    dynRank: 68,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "19yo; plus-plus speed; power projection"
+  },
+  "J Hernandez P": {
+    age: 18,
+    dynRank: 75,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "18yo; best pure talent 2025 class; long burn"
+  },
+  "T Anderson": {
+    age: 22,
+    dynRank: 80,
+    keeperTier: "A",
+    prospect: true,
+    dynNote: "22yo; SEA pipeline; safest FYPD SP bet"
+  },
+  "A Uribe": {
+    age: 28,
+    dynRank: 122,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; MIL RP; 3yr value"
+  },
+  "T Ward": {
+    age: 31,
+    dynRank: 135,
+    keeperTier: "C",
+    prospect: false,
+    dynNote: "31yo; BAL OF; 1-2yr value"
+  },
+  "L Nootbaar": {
+    age: 28,
+    dynRank: 115,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "28yo; STL OF; 3yr value"
+  },
+  "C Simpson": {
+    age: 24,
+    dynRank: 90,
+    keeperTier: "A",
+    prospect: false,
+    dynNote: "24yo speed; elite SB ceiling"
+  }
+};
+const KEEPER_TIER_COLORS = {
+  S: "#fbbf24",
+  A: "#4ade80",
+  B: "#60a5fa",
+  C: "#94a3b8",
+  D: "#f87171"
+};
+const KEEPER_TIER_BG = {
+  S: "#1a1200",
+  A: "#091409",
+  B: "#091525",
+  C: "#0d0f1a",
+  D: "#120808"
+};
+function getKeeperTier(name) {
+  return PLAYER_META[name] || {
+    age: null,
+    dynRank: null,
+    keeperTier: "B",
+    prospect: false,
+    dynNote: "No dynasty data"
+  };
+}
+
+// Combined draft score: blends redraft rank with dynasty/age value
+// For a perpetual keeper league, younger + higher dynRank = move up the board
+function combinedScore(p) {
+  const meta = getKeeperTier(p.name);
+  const redraftScore = 300 - p.sgRank; // higher = better
+  const age = meta.age || 30;
+  // Age bonus: 22yo gets +40, 25yo gets +20, 30yo gets 0, 35yo gets -30
+  const ageBonus = Math.max(-40, Math.min(50, (30 - age) * 4));
+  const prospectBonus = meta.prospect ? 15 : 0;
+  const tierBonus = {
+    S: 25,
+    A: 12,
+    B: 0,
+    C: -10,
+    D: -30
+  }[meta.keeperTier] || 0;
+  return redraftScore + ageBonus + prospectBonus + tierBonus;
+}
+const POS_COLORS = {
+  C: "#06b6d4",
+  "1B": "#f59e0b",
+  "2B": "#10b981",
+  "3B": "#f97316",
+  SS: "#8b5cf6",
+  "OF": "#ec4899",
+  "DH": "#64748b",
+  "SP": "#3b82f6",
+  "RP": "#ef4444"
+};
+const FLAG_COLORS = {
+  "↑ Breakout": "#22d3ee",
+  "⚡ Elite Contact": "#fbbf24",
+  "🎯 Elite Stuff": "#a3e635",
+  "🔥 Trending": "#f97316",
+  "🩺 Health Risk": "#f87171",
+  "⚠️ Regression": "#a78bfa"
+};
+
+// ── Keepers by team ───────────────────────────────────────────────
+const KEEPERS = {
+  "7 Run Ninth": ["P Alonso", "F Lindor", "C Bellinger", "C Sale", "L Gilbert"],
+  "Baseball Furies": ["J Naylor", "C.J. Abrams", "Y Alvarez", "B Woo", "T Yesavage"],
+  "Bath Legion Bombers": ["B Harper", "T Turner", "A Judge", "C Sanchez", "E Diaz"],
+  "Ghost Runners": ["C Raleigh", "M Betts", "K Griffin", "F Tatis Jr.", "R Acuna Jr."],
+  "Homers": ["N Kurtz", "J Rodriguez", "J Wood", "C Carroll", "T Skubal"],
+  "Masulis K": ["V Guerrero Jr.", "J Caminero", "J Wilson", "B Buxton", "J Chourio"],
+  "Owens": ["M Machado", "E De La Cruz", "J Soto", "W Langford", "K Schwarber"],
+  "Peaky Blinders": ["T Soderstrom", "B Turang", "J Chisholm", "G Perdomo", "K Tucker"],
+  "Rebuild Season": ["R Devers", "G Henderson", "R Greene", "B Rooker", "H Brown"],
+  "Rock Witt it": ["B Witt", "P Crow-Armstrong", "S Ohtani", "N McLean", "P Skenes"],
+  "RY-CON": ["B Rice", "F Freeman", "K Marte", "J Ramirez", "R Anthony"],
+  "The Fatty Hackett's": ["V Pasquantino", "J Merrill", "G Crochet", "Y Yamamoto", "A Munoz"]
+};
+const ALL_KEEPERS = new Set(Object.values(KEEPERS).flat());
+
+// Position of each keeper (for roster display)
+const KEEPER_POS = {
+  "P Alonso": "1B",
+  "F Lindor": "SS",
+  "C Bellinger": "OF",
+  "C Sale": "SP",
+  "L Gilbert": "SP",
+  "J Naylor": "1B",
+  "C.J. Abrams": "SS",
+  "Y Alvarez": "OF",
+  "B Woo": "SP",
+  "T Yesavage": "SP",
+  "B Harper": "1B",
+  "T Turner": "SS",
+  "A Judge": "OF",
+  "C Sanchez": "SP",
+  "E Diaz": "RP",
+  "C Raleigh": "C",
+  "M Betts": "OF",
+  "K Griffin": "SS",
+  "F Tatis Jr.": "OF",
+  "R Acuna Jr.": "OF",
+  "N Kurtz": "1B",
+  "J Rodriguez": "OF",
+  "J Wood": "OF",
+  "C Carroll": "OF",
+  "T Skubal": "SP",
+  "V Guerrero Jr.": "1B",
+  "J Caminero": "3B",
+  "J Wilson": "SS",
+  "B Buxton": "OF",
+  "J Chourio": "OF",
+  "M Machado": "3B",
+  "E De La Cruz": "SS",
+  "J Soto": "OF",
+  "W Langford": "OF",
+  "K Schwarber": "DH",
+  "T Soderstrom": "C",
+  "B Turang": "2B",
+  "J Chisholm": "2B",
+  "G Perdomo": "SS",
+  "K Tucker": "OF",
+  "R Devers": "3B",
+  "G Henderson": "SS",
+  "R Greene": "OF",
+  "B Rooker": "OF",
+  "H Brown": "SP",
+  "B Witt": "SS",
+  "P Crow-Armstrong": "OF",
+  "S Ohtani": "DH",
+  "N McLean": "SP",
+  "P Skenes": "SP",
+  "B Rice": "C",
+  "F Freeman": "1B",
+  "K Marte": "2B",
+  "J Ramirez": "3B",
+  "R Anthony": "OF",
+  "V Pasquantino": "1B",
+  "J Merrill": "OF",
+  "G Crochet": "SP",
+  "Y Yamamoto": "SP",
+  "A Munoz": "RP"
+};
+
+// ── Player Pool — NBC Sports/Yahoo Top 300 (Jan 2026 update) ──────
+// Format: name, pos, team, hr, r, rbi, sb, ba, era, k, w, sv, whip, sgRank, flag, flagNote
+const PLAYERS = [
+// Available top players (keepers removed)
+{
+  name: "Z Neto",
+  pos: "SS",
+  team: "LAA",
+  hr: 18,
+  r: 75,
+  rbi: 72,
+  sb: 22,
+  ba: .260,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 18,
+  flag: "↑ Breakout",
+  flagNote: "Emerging 5-cat SS; elite sprint speed; power developing"
+}, {
+  name: "T Turner",
+  pos: "SS",
+  team: "PHI",
+  hr: 18,
+  r: 88,
+  rbi: 72,
+  sb: 28,
+  ba: .285,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 26,
+  flag: "⚡ Elite Contact",
+  flagNote: "Elite sprint speed; xBA strong consistently"
+}, {
+  name: "M Harris II",
+  pos: "OF",
+  team: "ATL",
+  hr: 22,
+  r: 82,
+  rbi: 75,
+  sb: 20,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 30,
+  flag: "↑ Breakout",
+  flagNote: "Strong 2H 2025 (.430 SLG); top sprint speed; 5-cat upside"
+}, {
+  name: "A Riley",
+  pos: "3B",
+  team: "ATL",
+  hr: 30,
+  r: 88,
+  rbi: 95,
+  sb: 5,
+  ba: .272,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 34,
+  flag: "⚡ Elite Contact",
+  flagNote: "95th pctile hard-hit; elite xwOBA; safe floor"
+}, {
+  name: "J Duran",
+  pos: "OF",
+  team: "BOS",
+  hr: 16,
+  r: 90,
+  rbi: 65,
+  sb: 30,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 39,
+  flag: "🔥 Trending",
+  flagNote: "Elite speed/OBP; 95th pctile sprint speed; SB machine"
+}, {
+  name: "M Fried",
+  pos: "SP",
+  team: "NYY",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.00,
+  k: 185,
+  w: 16,
+  sv: null,
+  whip: 1.05,
+  sgRank: 40,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Miller",
+  pos: "RP",
+  team: "SD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.38,
+  k: 88,
+  w: 3,
+  sv: 40,
+  whip: 0.90,
+  sgRank: 41,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Triple-digit velo; top SwStr% in MLB; elite closer"
+}, {
+  name: "G Kirby",
+  pos: "SP",
+  team: "SEA",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.20,
+  k: 190,
+  w: 13,
+  sv: null,
+  whip: 1.08,
+  sgRank: 45,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Elite command; top-10 BB% among SPs; xERA sub-3"
+}, {
+  name: "H Greene",
+  pos: "SP",
+  team: "CIN",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.15,
+  k: 220,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 48,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Top-5 K rate MLB; 99mph fastball; xERA elite"
+}, {
+  name: "M Garcia",
+  pos: "3B",
+  team: "KC",
+  hr: 10,
+  r: 75,
+  rbi: 58,
+  sb: 28,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 49,
+  flag: "🔥 Trending",
+  flagNote: "Elite speed; 28 SB projection; solid BA floor"
+}, {
+  name: "C Bellinger",
+  pos: "OF",
+  team: "NYY",
+  hr: 28,
+  r: 88,
+  rbi: 85,
+  sb: 8,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 51,
+  flag: null,
+  flagNote: null
+}, {
+  name: "G Springer",
+  pos: "OF",
+  team: "TOR",
+  hr: 22,
+  r: 80,
+  rbi: 75,
+  sb: 8,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 53,
+  flag: "🩺 Health Risk",
+  flagNote: "Age-37; missed time each of last 3 seasons"
+}, {
+  name: "B Snell",
+  pos: "SP",
+  team: "LAD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.18,
+  k: 200,
+  w: 12,
+  sv: null,
+  whip: 1.10,
+  sgRank: 54,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J deGrom",
+  pos: "SP",
+  team: "TEX",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.85,
+  k: 215,
+  w: 12,
+  sv: null,
+  whip: 1.00,
+  sgRank: 56,
+  flag: "🩺 Health Risk",
+  flagNote: "Elite when healthy; multiple TJ; missed all 2024"
+}, {
+  name: "S Stewart",
+  pos: "1B",
+  team: "CIN",
+  hr: 22,
+  r: 72,
+  rbi: 88,
+  sb: 12,
+  ba: .285,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 57,
+  flag: "↑ Breakout",
+  flagNote: "xSLG .626 debut; elite barrel rate; cleanup upside"
+}, {
+  name: "J Pena",
+  pos: "SS",
+  team: "HOU",
+  hr: 20,
+  r: 78,
+  rbi: 80,
+  sb: 10,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 58,
+  flag: null,
+  flagNote: null
+}, {
+  name: "N Marte",
+  pos: "3B",
+  team: "CIN",
+  hr: 22,
+  r: 72,
+  rbi: 78,
+  sb: 12,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 65,
+  flag: "↑ Breakout",
+  flagNote: "Plus raw power; improving contact rates"
+}, {
+  name: "J Ryan",
+  pos: "SP",
+  team: "MIN",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.35,
+  k: 185,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 66,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Bichette",
+  pos: "SS",
+  team: "NYM",
+  hr: 18,
+  r: 80,
+  rbi: 72,
+  sb: 8,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 67,
+  flag: null,
+  flagNote: null
+}, {
+  name: "C Smith",
+  pos: "RP",
+  team: "CLE",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.55,
+  k: 82,
+  w: 3,
+  sv: 35,
+  whip: 0.98,
+  sgRank: 68,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Elite splitter; top SwStr%; emerging top closer"
+}, {
+  name: "O Cruz",
+  pos: "OF",
+  team: "PIT",
+  hr: 26,
+  r: 78,
+  rbi: 80,
+  sb: 20,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 69,
+  flag: "↑ Breakout",
+  flagNote: "115+ mph EV; freakish athlete; SB + power combo"
+}, {
+  name: "L Webb",
+  pos: "SP",
+  team: "SF",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.10,
+  k: 175,
+  w: 14,
+  sv: null,
+  whip: 1.08,
+  sgRank: 70,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Olson",
+  pos: "1B",
+  team: "ATL",
+  hr: 35,
+  r: 85,
+  rbi: 105,
+  sb: 2,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 71,
+  flag: "⚡ Elite Contact",
+  flagNote: "Top-5 barrel rate; xwOBA .400+; elite RBI floor"
+}, {
+  name: "J Hader",
+  pos: "RP",
+  team: "HOU",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.42,
+  k: 92,
+  w: 4,
+  sv: 40,
+  whip: 0.92,
+  sgRank: 72,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Elite K rate closer; consistent 35-40 SV floor"
+}, {
+  name: "D Cease",
+  pos: "SP",
+  team: "TOR",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.22,
+  k: 210,
+  w: 13,
+  sv: null,
+  whip: 1.12,
+  sgRank: 73,
+  flag: null,
+  flagNote: null
+}, {
+  name: "L Robert Jr.",
+  pos: "OF",
+  team: "NYM",
+  hr: 28,
+  r: 80,
+  rbi: 78,
+  sb: 22,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 74,
+  flag: "🩺 Health Risk",
+  flagNote: "Hip injury 2025; traded to Mets; SB upside"
+}, {
+  name: "S Schwellenbach",
+  pos: "SP",
+  team: "ATL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.30,
+  k: 185,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 76,
+  flag: "🩺 Health Risk",
+  flagNote: "Spring 2026 injury; monitor status closely"
+}, {
+  name: "C Ragans",
+  pos: "SP",
+  team: "KC",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.28,
+  k: 195,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 78,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Elite SwStr%; top-10 SP xERA in 2025"
+}, {
+  name: "F Valdez",
+  pos: "SP",
+  team: "HOU",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.18,
+  k: 185,
+  w: 14,
+  sv: null,
+  whip: 1.12,
+  sgRank: 79,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Naylor",
+  pos: "1B",
+  team: "SEA",
+  hr: 22,
+  r: 78,
+  rbi: 88,
+  sb: 22,
+  ba: .292,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 80,
+  flag: "🔥 Trending",
+  flagNote: "30/30 potential; career-high SB 2025; .295 BA"
+}, {
+  name: "A Chapman",
+  pos: "RP",
+  team: "BOS",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.68,
+  k: 88,
+  w: 3,
+  sv: 38,
+  whip: 1.00,
+  sgRank: 81,
+  flag: "🩺 Health Risk",
+  flagNote: "Age-38; elite velo still there; closer role secured"
+}, {
+  name: "S Suzuki",
+  pos: "OF",
+  team: "CHC",
+  hr: 22,
+  r: 75,
+  rbi: 72,
+  sb: 8,
+  ba: .275,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 82,
+  flag: null,
+  flagNote: null
+}, {
+  name: "Jh Duran",
+  pos: "RP",
+  team: "PHI",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.35,
+  k: 95,
+  w: 4,
+  sv: 42,
+  whip: 0.90,
+  sgRank: 83,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Splitter dominant; elite closer PHI"
+}, {
+  name: "C Seager",
+  pos: "SS",
+  team: "TEX",
+  hr: 30,
+  r: 85,
+  rbi: 92,
+  sb: 3,
+  ba: .282,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 84,
+  flag: "🩺 Health Risk",
+  flagNote: "Missed 550+ PA 3 straight years; elite when healthy"
+}, {
+  name: "J Misiorowski",
+  pos: "SP",
+  team: "MIL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.35,
+  k: 190,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 85,
+  flag: "↑ Breakout",
+  flagNote: "First half 2025: 2.70 ERA; elite stuff"
+}, {
+  name: "L Keaschall",
+  pos: "2B",
+  team: "MIN",
+  hr: 14,
+  r: 72,
+  rbi: 60,
+  sb: 18,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 86,
+  flag: "↑ Breakout",
+  flagNote: "Top prospect; speed/OBP profile; SB upside"
+}, {
+  name: "D Williams",
+  pos: "RP",
+  team: "NYM",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.52,
+  k: 90,
+  w: 3,
+  sv: 36,
+  whip: 0.95,
+  sgRank: 87,
+  flag: "🎯 Elite Stuff",
+  flagNote: "Elite velo/whiff combo; top SwStr%"
+}, {
+  name: "J Adell",
+  pos: "OF",
+  team: "LAA",
+  hr: 28,
+  r: 72,
+  rbi: 80,
+  sb: 14,
+  ba: .248,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 88,
+  flag: "↑ Breakout",
+  flagNote: "Elite raw power; xSLG .530+; contact improving"
+}, {
+  name: "Z Wheeler",
+  pos: "SP",
+  team: "PHI",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.05,
+  k: 218,
+  w: 15,
+  sv: null,
+  whip: 1.08,
+  sgRank: 89,
+  flag: null,
+  flagNote: null
+}, {
+  name: "K Stowers",
+  pos: "OF",
+  team: "MIA",
+  hr: 22,
+  r: 72,
+  rbi: 72,
+  sb: 10,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 90,
+  flag: "↑ Breakout",
+  flagNote: "Breakout 2025; improving discipline; power emerging"
+}, {
+  name: "J Holliday",
+  pos: "2B",
+  team: "BAL",
+  hr: 16,
+  r: 75,
+  rbi: 62,
+  sb: 18,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 91,
+  flag: "🩺 Health Risk",
+  flagNote: "Hamate injury spring; elite prospect when healthy"
+}, {
+  name: "J Altuve",
+  pos: "2B",
+  team: "HOU",
+  hr: 18,
+  r: 80,
+  rbi: 68,
+  sb: 12,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 92,
+  flag: null,
+  flagNote: null
+}, {
+  name: "S Gray",
+  pos: "SP",
+  team: "BOS",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.25,
+  k: 178,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 93,
+  flag: null,
+  flagNote: null
+}, {
+  name: "K Bradish",
+  pos: "SP",
+  team: "BAL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.45,
+  k: 178,
+  w: 12,
+  sv: null,
+  whip: 1.15,
+  sgRank: 97,
+  flag: "↑ Breakout",
+  flagNote: "Slider .139 xwOBA 2025; dominant new curveball"
+}, {
+  name: "D Lile",
+  pos: "OF",
+  team: "WSN",
+  hr: 16,
+  r: 72,
+  rbi: 62,
+  sb: 22,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 98,
+  flag: "↑ Breakout",
+  flagNote: "Top prospect; speed/power developing"
+}, {
+  name: "J Westburg",
+  pos: "3B",
+  team: "BAL",
+  hr: 22,
+  r: 78,
+  rbi: 78,
+  sb: 10,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 100,
+  flag: "↑ Breakout",
+  flagNote: "Multi-pos eligibility; improving contact + power mix"
+}, {
+  name: "D Crews",
+  pos: "OF",
+  team: "WSN",
+  hr: 18,
+  r: 75,
+  rbi: 68,
+  sb: 18,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 102,
+  flag: "↑ Breakout",
+  flagNote: "Top prospect; 20/20 potential"
+}, {
+  name: "C Yelich",
+  pos: "OF",
+  team: "MIL",
+  hr: 24,
+  r: 82,
+  rbi: 78,
+  sb: 14,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 103,
+  flag: null,
+  flagNote: null
+}, {
+  name: "X Edwards",
+  pos: "SS",
+  team: "MIA",
+  hr: 6,
+  r: 78,
+  rbi: 48,
+  sb: 38,
+  ba: .285,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 104,
+  flag: "🔥 Trending",
+  flagNote: "Elite speed; SB specialist; BA asset"
+}, {
+  name: "D Rasmussen",
+  pos: "SP",
+  team: "TB",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.32,
+  k: 172,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 105,
+  flag: null,
+  flagNote: null
+}, {
+  name: "E Perez",
+  pos: "SP",
+  team: "MIA",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.28,
+  k: 210,
+  w: 11,
+  sv: null,
+  whip: 1.12,
+  sgRank: 106,
+  flag: "↑ Breakout",
+  flagNote: "Elite stuff; changeup xwOBA elite; health key"
+}, {
+  name: "W Contreras",
+  pos: "C",
+  team: "MIL",
+  hr: 18,
+  r: 65,
+  rbi: 68,
+  sb: 2,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 107,
+  flag: "⚡ Elite Contact",
+  flagNote: "Career-high hard-hit 2025; xBA .290+"
+}, {
+  name: "B Reynolds",
+  pos: "OF",
+  team: "PIT",
+  hr: 18,
+  r: 72,
+  rbi: 70,
+  sb: 8,
+  ba: .280,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 108,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Nimmo",
+  pos: "OF",
+  team: "TEX",
+  hr: 18,
+  r: 75,
+  rbi: 68,
+  sb: 6,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 109,
+  flag: null,
+  flagNote: null
+}, {
+  name: "D Bednar",
+  pos: "RP",
+  team: "NYY",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.78,
+  k: 82,
+  w: 4,
+  sv: 34,
+  whip: 1.02,
+  sgRank: 110,
+  flag: null,
+  flagNote: null
+}, {
+  name: "I Herrera",
+  pos: "C",
+  team: "STL",
+  hr: 16,
+  r: 62,
+  rbi: 65,
+  sb: 2,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 111,
+  flag: "↑ Breakout",
+  flagNote: "Elite contact rates; C eligibility coming"
+}, {
+  name: "J Luzardo",
+  pos: "SP",
+  team: "PHI",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.38,
+  k: 178,
+  w: 12,
+  sv: null,
+  whip: 1.15,
+  sgRank: 112,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Burleson",
+  pos: "1B",
+  team: "STL",
+  hr: 20,
+  r: 72,
+  rbi: 75,
+  sb: 4,
+  ba: .272,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 113,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Musgrove",
+  pos: "SP",
+  team: "SD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.42,
+  k: 175,
+  w: 12,
+  sv: null,
+  whip: 1.15,
+  sgRank: 114,
+  flag: "🩺 Health Risk",
+  flagNote: "Tommy John recovery; monitor spring"
+}, {
+  name: "T Hernandez",
+  pos: "OF",
+  team: "LAD",
+  hr: 24,
+  r: 78,
+  rbi: 82,
+  sb: 5,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 115,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Bohm",
+  pos: "3B",
+  team: "PHI",
+  hr: 18,
+  r: 72,
+  rbi: 80,
+  sb: 4,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 118,
+  flag: null,
+  flagNote: null
+}, {
+  name: "C Rafaela",
+  pos: "OF",
+  team: "BOS",
+  hr: 16,
+  r: 78,
+  rbi: 62,
+  sb: 25,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 119,
+  flag: "🔥 Trending",
+  flagNote: "Elite speed; 2B eligibility; power developing"
+}, {
+  name: "B Doyle",
+  pos: "OF",
+  team: "COL",
+  hr: 18,
+  r: 80,
+  rbi: 65,
+  sb: 28,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 120,
+  flag: "↑ Breakout",
+  flagNote: "95th pctile sprint; Coors power; SB upside"
+}, {
+  name: "G Jax",
+  pos: "RP",
+  team: "TB",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.85,
+  k: 80,
+  w: 3,
+  sv: 30,
+  whip: 1.05,
+  sgRank: 121,
+  flag: null,
+  flagNote: null
+}, {
+  name: "T Edman",
+  pos: "2B",
+  team: "LAD",
+  hr: 12,
+  r: 78,
+  rbi: 58,
+  sb: 22,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 123,
+  flag: null,
+  flagNote: null
+}, {
+  name: "G Cole",
+  pos: "SP",
+  team: "NYY",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.05,
+  k: 215,
+  w: 15,
+  sv: null,
+  whip: 1.08,
+  sgRank: 124,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Polanco",
+  pos: "2B",
+  team: "NYM",
+  hr: 20,
+  r: 72,
+  rbi: 72,
+  sb: 6,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 125,
+  flag: null,
+  flagNote: null
+}, {
+  name: "T Bibee",
+  pos: "SP",
+  team: "CLE",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.38,
+  k: 182,
+  w: 13,
+  sv: null,
+  whip: 1.12,
+  sgRank: 126,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Bregman",
+  pos: "3B",
+  team: "CHC",
+  hr: 22,
+  r: 78,
+  rbi: 82,
+  sb: 4,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 127,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Hoffman",
+  pos: "RP",
+  team: "TOR",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.72,
+  k: 82,
+  w: 3,
+  sv: 35,
+  whip: 1.00,
+  sgRank: 128,
+  flag: "🎯 Elite Stuff",
+  flagNote: "New closer TOR; elite strikeout reliever"
+}, {
+  name: "N Pivetta",
+  pos: "SP",
+  team: "SD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.45,
+  k: 185,
+  w: 12,
+  sv: null,
+  whip: 1.15,
+  sgRank: 129,
+  flag: null,
+  flagNote: null
+}, {
+  name: "I Happ",
+  pos: "OF",
+  team: "CHC",
+  hr: 20,
+  r: 72,
+  rbi: 68,
+  sb: 8,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 131,
+  flag: null,
+  flagNote: null
+}, {
+  name: "S Perez",
+  pos: "C",
+  team: "KC",
+  hr: 18,
+  r: 58,
+  rbi: 72,
+  sb: 2,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 132,
+  flag: null,
+  flagNote: null
+}, {
+  name: "R Suarez",
+  pos: "SP",
+  team: "BOS",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.35,
+  k: 172,
+  w: 13,
+  sv: null,
+  whip: 1.12,
+  sgRank: 133,
+  flag: null,
+  flagNote: null
+}, {
+  name: "N Hoerner",
+  pos: "2B",
+  team: "CHC",
+  hr: 8,
+  r: 75,
+  rbi: 52,
+  sb: 18,
+  ba: .282,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 134,
+  flag: "⚡ Elite Contact",
+  flagNote: "Elite contact/BA; SB floor; low HR ceiling"
+}, {
+  name: "F Peralta",
+  pos: "SP",
+  team: "NYM",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.10,
+  k: 205,
+  w: 13,
+  sv: null,
+  whip: 1.08,
+  sgRank: 136,
+  flag: "⚠️ Regression",
+  flagNote: "Trade to Mets; weaker run support; BABIP luck"
+}, {
+  name: "R Helsley",
+  pos: "RP",
+  team: "BAL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.55,
+  k: 88,
+  w: 4,
+  sv: 38,
+  whip: 0.98,
+  sgRank: 137,
+  flag: null,
+  flagNote: null
+}, {
+  name: "Y Diaz",
+  pos: "1B",
+  team: "TB",
+  hr: 28,
+  r: 72,
+  rbi: 90,
+  sb: 1,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 138,
+  flag: "⚡ Elite Contact",
+  flagNote: "98th pctile exit velocity; elite barrel rate"
+}, {
+  name: "H Goodman",
+  pos: "C",
+  team: "COL",
+  hr: 22,
+  r: 58,
+  rbi: 68,
+  sb: 2,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 139,
+  flag: "↑ Breakout",
+  flagNote: "95th pctile EV; Coors boost; xwOBA .360"
+}, {
+  name: "B Woodruff",
+  pos: "SP",
+  team: "MIL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.38,
+  k: 182,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 140,
+  flag: "🩺 Health Risk",
+  flagNote: "Shoulder recovery; elite when healthy"
+}, {
+  name: "T Story",
+  pos: "SS",
+  team: "BOS",
+  hr: 20,
+  r: 75,
+  rbi: 72,
+  sb: 18,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 141,
+  flag: "↑ Breakout",
+  flagNote: "Healthy; strong 2025 Statcast profile"
+}, {
+  name: "A Ramirez",
+  pos: "C",
+  team: "MIA",
+  hr: 16,
+  r: 55,
+  rbi: 60,
+  sb: 2,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 142,
+  flag: "↑ Breakout",
+  flagNote: "Top C prospect; bat-first profile"
+}, {
+  name: "M Busch",
+  pos: "1B",
+  team: "CHC",
+  hr: 22,
+  r: 72,
+  rbi: 78,
+  sb: 4,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 143,
+  flag: null,
+  flagNote: null
+}, {
+  name: "K Gausman",
+  pos: "SP",
+  team: "TOR",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.18,
+  k: 200,
+  w: 14,
+  sv: null,
+  whip: 1.10,
+  sgRank: 144,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Ozuna",
+  pos: "DH",
+  team: "ATL",
+  hr: 30,
+  r: 78,
+  rbi: 95,
+  sb: 3,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 145,
+  flag: null,
+  flagNote: null
+}, {
+  name: "T Glasnow",
+  pos: "SP",
+  team: "LAD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.08,
+  k: 215,
+  w: 14,
+  sv: null,
+  whip: 1.08,
+  sgRank: 147,
+  flag: "🩺 Health Risk",
+  flagNote: "Elite stuff; consistent IL trips every season"
+}, {
+  name: "S McClanahan",
+  pos: "SP",
+  team: "TB",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.15,
+  k: 195,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 148,
+  flag: "🩺 Health Risk",
+  flagNote: "Tommy John 2024; return 2026; elite upside"
+}, {
+  name: "E Tovar",
+  pos: "SS",
+  team: "COL",
+  hr: 16,
+  r: 72,
+  rbi: 65,
+  sb: 14,
+  ba: .272,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 149,
+  flag: null,
+  flagNote: null
+}, {
+  name: "S Langeliers",
+  pos: "C",
+  team: "OAK",
+  hr: 28,
+  r: 62,
+  rbi: 78,
+  sb: 2,
+  ba: .232,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 150,
+  flag: "↑ Breakout",
+  flagNote: "Top-10 C barrel rate; xSLG .540+"
+}, {
+  name: "R Iglesias",
+  pos: "RP",
+  team: "ATL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.72,
+  k: 78,
+  w: 3,
+  sv: 32,
+  whip: 1.02,
+  sgRank: 151,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Trout",
+  pos: "OF",
+  team: "LAA",
+  hr: 28,
+  r: 72,
+  rbi: 80,
+  sb: 5,
+  ba: .272,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 152,
+  flag: "🩺 Health Risk",
+  flagNote: "Elite when plays; 100+ games missed 3 of 4 years"
+}, {
+  name: "C Horton",
+  pos: "SP",
+  team: "CHC",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.35,
+  k: 190,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 154,
+  flag: "↑ Breakout",
+  flagNote: "Top pitching prospect; elite stuff"
+}, {
+  name: "R Arozarena",
+  pos: "OF",
+  team: "SEA",
+  hr: 18,
+  r: 75,
+  rbi: 68,
+  sb: 22,
+  ba: .245,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 155,
+  flag: null,
+  flagNote: null
+}, {
+  name: "E Sheehan",
+  pos: "SP",
+  team: "LAD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.38,
+  k: 195,
+  w: 11,
+  sv: null,
+  whip: 1.15,
+  sgRank: 156,
+  flag: "↑ Breakout",
+  flagNote: "Slider 43.6% whiff; Sept 2025: 1.42 ERA"
+}, {
+  name: "W Adames",
+  pos: "SS",
+  team: "SF",
+  hr: 22,
+  r: 78,
+  rbi: 80,
+  sb: 8,
+  ba: .248,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 157,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Stott",
+  pos: "2B",
+  team: "PHI",
+  hr: 16,
+  r: 72,
+  rbi: 65,
+  sb: 10,
+  ba: .272,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 159,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M McLain",
+  pos: "2B",
+  team: "CIN",
+  hr: 18,
+  r: 72,
+  rbi: 65,
+  sb: 12,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 160,
+  flag: null,
+  flagNote: null
+}, {
+  name: "C Burns",
+  pos: "SP",
+  team: "CIN",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.32,
+  k: 188,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 161,
+  flag: "↑ Breakout",
+  flagNote: "Electric spin rates; elite movement profiles"
+}, {
+  name: "I Paredes",
+  pos: "3B",
+  team: "HOU",
+  hr: 20,
+  r: 68,
+  rbi: 72,
+  sb: 4,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 165,
+  flag: null,
+  flagNote: null
+}, {
+  name: "T Megill",
+  pos: "RP",
+  team: "MIL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.88,
+  k: 82,
+  w: 3,
+  sv: 32,
+  whip: 1.05,
+  sgRank: 166,
+  flag: null,
+  flagNote: null
+}, {
+  name: "X Bogaerts",
+  pos: "SS",
+  team: "SD",
+  hr: 18,
+  r: 72,
+  rbi: 72,
+  sb: 6,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 167,
+  flag: null,
+  flagNote: null
+}, {
+  name: "S Kwan",
+  pos: "OF",
+  team: "CLE",
+  hr: 10,
+  r: 80,
+  rbi: 55,
+  sb: 18,
+  ba: .285,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 168,
+  flag: "⚡ Elite Contact",
+  flagNote: "Elite contact; BA/OBP asset; speed floor"
+}, {
+  name: "T Yesavage",
+  pos: "SP",
+  team: "TOR",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.42,
+  k: 185,
+  w: 12,
+  sv: null,
+  whip: 1.14,
+  sgRank: 169,
+  flag: "↑ Breakout",
+  flagNote: "Top pitching prospect; electric arsenal"
+}, {
+  name: "D Swanson",
+  pos: "SS",
+  team: "CHC",
+  hr: 18,
+  r: 72,
+  rbi: 68,
+  sb: 14,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 172,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M King",
+  pos: "SP",
+  team: "SD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.38,
+  k: 185,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 173,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Volpe",
+  pos: "SS",
+  team: "NYY",
+  hr: 18,
+  r: 82,
+  rbi: 65,
+  sb: 22,
+  ba: .248,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 246,
+  flag: "↑ Breakout",
+  flagNote: "Speed upside; SS scarcity value"
+}, {
+  name: "S Imanaga",
+  pos: "SP",
+  team: "CHC",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.28,
+  k: 182,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 193,
+  flag: null,
+  flagNote: null
+}, {
+  name: "C Torres",
+  pos: "2B",
+  team: "DET",
+  hr: 18,
+  r: 72,
+  rbi: 65,
+  sb: 8,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 195,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Chandler",
+  pos: "SP",
+  team: "PIT",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.28,
+  k: 182,
+  w: 11,
+  sv: null,
+  whip: 1.14,
+  sgRank: 197,
+  flag: "↑ Breakout",
+  flagNote: "Elite secondaries; top breakout per Statcast"
+}, {
+  name: "M Chapman",
+  pos: "3B",
+  team: "SF",
+  hr: 20,
+  r: 68,
+  rbi: 70,
+  sb: 4,
+  ba: .248,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 199,
+  flag: null,
+  flagNote: null
+}, {
+  name: "S Strider",
+  pos: "SP",
+  team: "ATL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.20,
+  k: 220,
+  w: 13,
+  sv: null,
+  whip: 1.08,
+  sgRank: 204,
+  flag: "🩺 Health Risk",
+  flagNote: "Tommy John 2024; elite if returns healthy"
+}, {
+  name: "P Lopez",
+  pos: "SP",
+  team: "MIN",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.35,
+  k: 180,
+  w: 13,
+  sv: null,
+  whip: 1.10,
+  sgRank: 205,
+  flag: null,
+  flagNote: null
+}, {
+  name: "W Smith",
+  pos: "C",
+  team: "LAD",
+  hr: 16,
+  r: 62,
+  rbi: 65,
+  sb: 2,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 206,
+  flag: null,
+  flagNote: null
+}, {
+  name: "C Estevez",
+  pos: "RP",
+  team: "KC",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.88,
+  k: 75,
+  w: 3,
+  sv: 30,
+  whip: 1.05,
+  sgRank: 209,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Rutschman",
+  pos: "C",
+  team: "BAL",
+  hr: 18,
+  r: 62,
+  rbi: 65,
+  sb: 3,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 265,
+  flag: "↑ Breakout",
+  flagNote: "Elite walk rate; xwOBA strong; power developing"
+}, {
+  name: "L Arraez",
+  pos: "1B",
+  team: "FA",
+  hr: 5,
+  r: 68,
+  rbi: 52,
+  sb: 5,
+  ba: .325,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 229,
+  flag: "⚡ Elite Contact",
+  flagNote: "BA machine; lowest K% in MLB; 3x batting champ"
+}, {
+  name: "C Walker",
+  pos: "1B",
+  team: "HOU",
+  hr: 24,
+  r: 72,
+  rbi: 80,
+  sb: 2,
+  ba: .248,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 230,
+  flag: null,
+  flagNote: null
+}, {
+  name: "S Bieber",
+  pos: "SP",
+  team: "TOR",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.38,
+  k: 182,
+  w: 12,
+  sv: null,
+  whip: 1.12,
+  sgRank: 186,
+  flag: "🩺 Health Risk",
+  flagNote: "Elbow surgery 2024/25; elite when healthy"
+}, {
+  name: "J Lowe",
+  pos: "OF",
+  team: "LAA",
+  hr: 22,
+  r: 75,
+  rbi: 75,
+  sb: 12,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 187,
+  flag: "⚡ Elite Contact",
+  flagNote: "xwOBA consistently .360+"
+}, {
+  name: "H Ramos",
+  pos: "OF",
+  team: "SF",
+  hr: 20,
+  r: 72,
+  rbi: 72,
+  sb: 10,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 188,
+  flag: "↑ Breakout",
+  flagNote: "Breakout 2025; improving power/contact blend"
+}, {
+  name: "C Rodon",
+  pos: "SP",
+  team: "NYY",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.42,
+  k: 195,
+  w: 13,
+  sv: null,
+  whip: 1.12,
+  sgRank: 189,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Wallner",
+  pos: "OF",
+  team: "MIN",
+  hr: 22,
+  r: 68,
+  rbi: 72,
+  sb: 6,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 223,
+  flag: null,
+  flagNote: null
+}, {
+  name: "R Pepiot",
+  pos: "SP",
+  team: "TB",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.55,
+  k: 172,
+  w: 11,
+  sv: null,
+  whip: 1.18,
+  sgRank: 182,
+  flag: "↑ Breakout",
+  flagNote: "19 IVB four-seamer; pitcher-friendly Trop"
+}, {
+  name: "K Carpenter",
+  pos: "OF",
+  team: "DET",
+  hr: 22,
+  r: 68,
+  rbi: 72,
+  sb: 4,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 174,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Marsee",
+  pos: "OF",
+  team: "MIA",
+  hr: 14,
+  r: 72,
+  rbi: 58,
+  sb: 28,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 135,
+  flag: "↑ Breakout",
+  flagNote: "Elite speed; developing hitter; SB upside"
+}, {
+  name: "C Simpson",
+  pos: "OF",
+  team: "TB",
+  hr: 4,
+  r: 65,
+  rbi: 35,
+  sb: 40,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 225,
+  flag: "🔥 Trending",
+  flagNote: "Elite SB specialist; 40 SB upside"
+}, {
+  name: "J Lee",
+  pos: "OF",
+  team: "SF",
+  hr: 14,
+  r: 72,
+  rbi: 60,
+  sb: 8,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 146,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Doyle",
+  pos: "OF",
+  team: "COL",
+  hr: 18,
+  r: 80,
+  rbi: 65,
+  sb: 28,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 120,
+  flag: "↑ Breakout",
+  flagNote: "95th pctile sprint; Coors power; SB upside"
+}, {
+  name: "S Kwan",
+  pos: "OF",
+  team: "CLE",
+  hr: 10,
+  r: 80,
+  rbi: 55,
+  sb: 18,
+  ba: .285,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 168,
+  flag: "⚡ Elite Contact",
+  flagNote: "Elite contact; BA/OBP asset"
+}, {
+  name: "M Ozuna",
+  pos: "DH",
+  team: "ATL",
+  hr: 30,
+  r: 78,
+  rbi: 95,
+  sb: 3,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 145,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Soler",
+  pos: "OF",
+  team: "LAA",
+  hr: 28,
+  r: 68,
+  rbi: 80,
+  sb: 4,
+  ba: .235,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 278,
+  flag: null,
+  flagNote: null
+}, {
+  name: "T Friedl",
+  pos: "OF",
+  team: "CIN",
+  hr: 14,
+  r: 72,
+  rbi: 55,
+  sb: 22,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 279,
+  flag: null,
+  flagNote: null
+}, {
+  name: "O Albies",
+  pos: "2B",
+  team: "ATL",
+  hr: 18,
+  r: 72,
+  rbi: 65,
+  sb: 8,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 280,
+  flag: "🩺 Health Risk",
+  flagNote: "Injury history; wrist concern"
+}, {
+  name: "V Scott II",
+  pos: "OF",
+  team: "STL",
+  hr: 6,
+  r: 68,
+  rbi: 40,
+  sb: 38,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 282,
+  flag: "🔥 Trending",
+  flagNote: "Elite SB upside; speed tool elite"
+}, {
+  name: "K Finnegan",
+  pos: "RP",
+  team: "WSN",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.10,
+  k: 72,
+  w: 3,
+  sv: 28,
+  whip: 1.10,
+  sgRank: 220,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J India",
+  pos: "2B",
+  team: "KC",
+  hr: 16,
+  r: 72,
+  rbi: 60,
+  sb: 8,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 239,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Semien",
+  pos: "2B",
+  team: "NYM",
+  hr: 18,
+  r: 75,
+  rbi: 65,
+  sb: 8,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 242,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Barger",
+  pos: "3B",
+  team: "TOR",
+  hr: 18,
+  r: 65,
+  rbi: 68,
+  sb: 8,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 191,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Donovan",
+  pos: "2B",
+  team: "STL",
+  hr: 12,
+  r: 68,
+  rbi: 58,
+  sb: 6,
+  ba: .278,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 192,
+  flag: null,
+  flagNote: null
+}, {
+  name: "R Walker",
+  pos: "RP",
+  team: "SF",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.88,
+  k: 78,
+  w: 3,
+  sv: 28,
+  whip: 1.05,
+  sgRank: 240,
+  flag: null,
+  flagNote: null
+}, {
+  name: "G Moreno",
+  pos: "C",
+  team: "ARI",
+  hr: 12,
+  r: 55,
+  rbi: 55,
+  sb: 4,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 238,
+  flag: null,
+  flagNote: null
+}, {
+  name: "Y Diaz C",
+  pos: "C",
+  team: "HOU",
+  hr: 20,
+  r: 58,
+  rbi: 68,
+  sb: 2,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 244,
+  flag: null,
+  flagNote: null
+}, {
+  name: "N Schanuel",
+  pos: "1B",
+  team: "LAA",
+  hr: 14,
+  r: 62,
+  rbi: 60,
+  sb: 4,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 226,
+  flag: null,
+  flagNote: null
+}, {
+  name: "M Winn",
+  pos: "SS",
+  team: "STL",
+  hr: 12,
+  r: 65,
+  rbi: 55,
+  sb: 16,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 227,
+  flag: null,
+  flagNote: null
+}, {
+  name: "C Correa",
+  pos: "SS",
+  team: "HOU",
+  hr: 18,
+  r: 68,
+  rbi: 68,
+  sb: 4,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 275,
+  flag: "🩺 Health Risk",
+  flagNote: "Chronic back issues; miss time risk"
+}, {
+  name: "K Manzardo",
+  pos: "1B",
+  team: "CLE",
+  hr: 20,
+  r: 65,
+  rbi: 72,
+  sb: 2,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 290,
+  flag: "↑ Breakout",
+  flagNote: "Improving; solid power floor emerging"
+}, {
+  name: "L Nootbaar",
+  pos: "OF",
+  team: "STL",
+  hr: 16,
+  r: 68,
+  rbi: 60,
+  sb: 8,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 291,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Realmuto",
+  pos: "C",
+  team: "PHI",
+  hr: 18,
+  r: 65,
+  rbi: 70,
+  sb: 8,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 293,
+  flag: "🩺 Health Risk",
+  flagNote: "Knee surgery; monitor spring"
+}, {
+  name: "K Griffin",
+  pos: "SS",
+  team: "PIT",
+  hr: 14,
+  r: 65,
+  rbi: 58,
+  sb: 18,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 212,
+  flag: "↑ Breakout",
+  flagNote: "Top prospect; potentially opening day starter"
+}, {
+  name: "N Arenado",
+  pos: "3B",
+  team: "ARI",
+  hr: 20,
+  r: 65,
+  rbi: 72,
+  sb: 2,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 298,
+  flag: "⚠️ Regression",
+  flagNote: "Age decline; moved to weaker team"
+}, {
+  name: "C Durbin",
+  pos: "3B",
+  team: "MIL",
+  hr: 14,
+  r: 60,
+  rbi: 55,
+  sb: 10,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 211,
+  flag: "↑ Breakout",
+  flagNote: "Developing prospect; improving contact"
+}, {
+  name: "M Munetaka",
+  pos: "3B",
+  team: "CWS",
+  hr: 28,
+  r: 65,
+  rbi: 82,
+  sb: 2,
+  ba: .262,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 181,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Beck",
+  pos: "OF",
+  team: "COL",
+  hr: 18,
+  r: 68,
+  rbi: 65,
+  sb: 12,
+  ba: .252,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 162,
+  flag: null,
+  flagNote: null
+}, {
+  name: "A Vaughn",
+  pos: "1B",
+  team: "MIL",
+  hr: 20,
+  r: 68,
+  rbi: 72,
+  sb: 2,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 163,
+  flag: null,
+  flagNote: null
+}, {
+  name: "B Miller SP",
+  pos: "SP",
+  team: "SEA",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.50,
+  k: 168,
+  w: 12,
+  sv: null,
+  whip: 1.15,
+  sgRank: 164,
+  flag: null,
+  flagNote: null
+}, {
+  name: "T Ward",
+  pos: "OF",
+  team: "BAL",
+  hr: 18,
+  r: 65,
+  rbi: 65,
+  sb: 6,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 208,
+  flag: null,
+  flagNote: null
+}, {
+  name: "J Abreu",
+  pos: "RP",
+  team: "MIL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 2.92,
+  k: 80,
+  w: 3,
+  sv: 28,
+  whip: 1.08,
+  sgRank: 202,
+  flag: null,
+  flagNote: null
+}, {
+  name: "G Williams",
+  pos: "SP",
+  team: "CLE",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.55,
+  k: 175,
+  w: 11,
+  sv: null,
+  whip: 1.18,
+  sgRank: 210,
+  flag: null,
+  flagNote: null
+}, {
+  name: "D Baldwin",
+  pos: "C",
+  team: "ATL",
+  hr: 14,
+  r: 52,
+  rbi: 55,
+  sb: 2,
+  ba: .258,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 185,
+  flag: "↑ Breakout",
+  flagNote: "Top C prospect ATL; bat developing"
+}, {
+  name: "R Anthony",
+  pos: "OF",
+  team: "BOS",
+  hr: 18,
+  r: 75,
+  rbi: 68,
+  sb: 8,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 47,
+  flag: "↑ Breakout",
+  flagNote: "Elite prospect; power/speed combo emerging"
+}, {
+  name: "A Uribe",
+  pos: "RP",
+  team: "MIL",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.00,
+  k: 78,
+  w: 3,
+  sv: 26,
+  whip: 1.08,
+  sgRank: 202,
+  flag: null,
+  flagNote: null
+},
+// ── Dynasty/Keeper targets — prospects & young players drafted for future value ──
+// These players have limited/no 2026 production but high keeper value
+{
+  name: "C Montgomery",
+  pos: "SS",
+  team: "CWS",
+  hr: 20,
+  r: 70,
+  rbi: 65,
+  sb: 8,
+  ba: .245,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 175,
+  flag: "↑ Breakout",
+  flagNote: "23yo; 21 HR debut; top CWS SS asset; dynasty riser"
+}, {
+  name: "T Bazzana",
+  pos: "2B",
+  team: "CLE",
+  hr: 14,
+  r: 68,
+  rbi: 58,
+  sb: 12,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 178,
+  flag: "↑ Breakout",
+  flagNote: "Top 2B prospect; elite contact; CLE"
+}, {
+  name: "C Basallo",
+  pos: "C",
+  team: "BAL",
+  hr: 16,
+  r: 52,
+  rbi: 58,
+  sb: 2,
+  ba: .245,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 180,
+  flag: "↑ Breakout",
+  flagNote: "Top C prospect; prodigious raw power; dynasty C1"
+}, {
+  name: "J Jenkins",
+  pos: "OF",
+  team: "BOS",
+  hr: 14,
+  r: 58,
+  rbi: 52,
+  sb: 8,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 183,
+  flag: "↑ Breakout",
+  flagNote: "20yo; BOS top prospect; 20-25 HR ceiling; 2026 debut"
+}, {
+  name: "C Clark",
+  pos: "OF",
+  team: "DET",
+  hr: 14,
+  r: 60,
+  rbi: 50,
+  sb: 18,
+  ba: .260,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 184,
+  flag: "↑ Breakout",
+  flagNote: "20yo; 148 wRC+ 2025; 20/20 upside; DET 1H debut"
+}, {
+  name: "E Florentino",
+  pos: "SS",
+  team: "MIA",
+  hr: 10,
+  r: 52,
+  rbi: 40,
+  sb: 20,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 215,
+  flag: "↑ Breakout",
+  flagNote: "18yo phenom; top Low-A hitter 2025; peak 25/25 ceiling"
+}, {
+  name: "J Miller",
+  pos: "OF",
+  team: "CLE",
+  hr: 12,
+  r: 55,
+  rbi: 45,
+  sb: 14,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 217,
+  flag: "↑ Breakout",
+  flagNote: "Ended 2025 on tear (.356/.491/.607); dynasty OF sleeper"
+}, {
+  name: "T Okamoto",
+  pos: "3B",
+  team: "NYM",
+  hr: 18,
+  r: 62,
+  rbi: 65,
+  sb: 4,
+  ba: .268,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 218,
+  flag: "↑ Breakout",
+  flagNote: "NPB import; OBP floor; 15-20 HR upside; FYPD eligible"
+}, {
+  name: "K Murakami",
+  pos: "3B",
+  team: "ARI",
+  hr: 22,
+  r: 65,
+  rbi: 72,
+  sb: 3,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 219,
+  flag: "↑ Breakout",
+  flagNote: "NPB star; big bat; most hyped Japan import 2026"
+}, {
+  name: "J Williams",
+  pos: "SS",
+  team: "NYM",
+  hr: 8,
+  r: 58,
+  rbi: 38,
+  sb: 22,
+  ba: .265,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 221,
+  flag: "↑ Breakout",
+  flagNote: "Top NYM SS prospect; speed/contact profile; keeper gem"
+}, {
+  name: "L Morales",
+  pos: "SP",
+  team: "OAK",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.45,
+  k: 175,
+  w: 10,
+  sv: null,
+  whip: 1.18,
+  sgRank: 222,
+  flag: "↑ Breakout",
+  flagNote: "Top OAK pitching prospect; dynasty SP upside"
+}, {
+  name: "T Witherspoon",
+  pos: "SP",
+  team: "BOS",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 270,
+  flag: "↑ Breakout",
+  flagNote: "21yo; 2025 1st round pick; 5-pitch mix; long-term SP"
+}, {
+  name: "N Imai",
+  pos: "SP",
+  team: "SD",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.55,
+  k: 168,
+  w: 10,
+  sv: null,
+  whip: 1.20,
+  sgRank: 255,
+  flag: "↑ Breakout",
+  flagNote: "Top FYPD prospect; elite arsenal; command improving"
+}, {
+  name: "I Seymour",
+  pos: "SP",
+  team: "CIN",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.60,
+  k: 162,
+  w: 10,
+  sv: null,
+  whip: 1.20,
+  sgRank: 260,
+  flag: "↑ Breakout",
+  flagNote: "CIN pitching prospect; elite fastball; dynasty SP"
+}, {
+  name: "C Willits",
+  pos: "OF",
+  team: "LAA",
+  hr: 6,
+  r: 50,
+  rbi: 35,
+  sb: 25,
+  ba: .270,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 285,
+  flag: "↑ Breakout",
+  flagNote: "19yo phenom; youngest to full-season 2025; elite tools"
+}, {
+  name: "G Hall",
+  pos: "OF",
+  team: "TB",
+  hr: 10,
+  r: 52,
+  rbi: 38,
+  sb: 28,
+  ba: .255,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 288,
+  flag: "↑ Breakout",
+  flagNote: "Plus-plus runner; power projection; top 2025 HS draftee"
+}, {
+  name: "J Hernandez P",
+  pos: "SP",
+  team: "CLE",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: null,
+  k: null,
+  w: null,
+  sv: null,
+  whip: null,
+  sgRank: 295,
+  flag: "↑ Breakout",
+  flagNote: "Best pure talent in 2025 class; triple-digit FB; long term"
+}, {
+  name: "T Anderson",
+  pos: "SP",
+  team: "SEA",
+  hr: null,
+  r: null,
+  rbi: null,
+  sb: null,
+  ba: null,
+  era: 3.65,
+  k: 158,
+  w: 10,
+  sv: null,
+  whip: 1.22,
+  sgRank: 296,
+  flag: "↑ Breakout",
+  flagNote: "Safe FYPD bet; SEC track record; SEA development pipeline"
+}];
+
+// Deduplicate
+const PLAYER_POOL = PLAYERS.filter((p, i, a) => a.findIndex(x => x.name === p.name) === i);
+
+// ── Helpers ───────────────────────────────────────────────────────
+function getMyPickSlots() {
+  const picks = [];
+  for (let r = KEEPER_ROUNDS + 1; r <= TOTAL_ROUNDS; r++) {
+    const pick = r % 2 === 1 ? MY_SLOT : NUM_TEAMS - MY_SLOT + 1;
+    picks.push({
+      round: r,
+      pickInRound: pick,
+      overall: (r - 1) * NUM_TEAMS + pick
+    });
+  }
+  return picks;
+}
+const MY_PICK_SLOTS = getMyPickSlots();
+function getCatValue(player) {
+  const v = {};
+  HIT_CATS.forEach(cat => {
+    if (player[cat] !== null && player[cat] !== undefined) {
+      if (cat === "ba") v[cat] = (player[cat] - CAT_AVG[cat]) * 200;else v[cat] = player[cat] - CAT_AVG[cat];
+    }
+  });
+  PIT_CATS.forEach(cat => {
+    if (player[cat] !== null && player[cat] !== undefined) {
+      if (LOWER_IS_BETTER.has(cat)) v[cat] = (CAT_AVG[cat] - player[cat]) * (cat === "era" ? 20 : 60);else v[cat] = player[cat] - CAT_AVG[cat];
+    }
+  });
+  return v;
+}
+function rotoScore(player) {
+  const v = getCatValue(player);
+  return Object.values(v).reduce((s, x) => s + (x > 0 ? x : 0), 0);
+}
+function calcMyTotals(players) {
+  const t = {
+    hr: 0,
+    r: 0,
+    rbi: 0,
+    sb: 0,
+    ba: 0,
+    era: 0,
+    k: 0,
+    w: 0,
+    sv: 0,
+    whip: 0
+  };
+  let batters = 0,
+    pitchers = 0;
+  players.forEach(p => {
+    if (p.hr !== null && p.hr !== undefined) {
+      t.hr += p.hr || 0;
+      t.r += p.r || 0;
+      t.rbi += p.rbi || 0;
+      t.sb += p.sb || 0;
+      t.ba += p.ba || 0;
+      batters++;
+    }
+    if (p.era !== null && p.era !== undefined) {
+      t.era += p.era || 0;
+      t.k += p.k || 0;
+      t.w += p.w || 0;
+      t.sv += p.sv || 0;
+      t.whip += p.whip || 0;
+      pitchers++;
+    }
+  });
+  if (batters > 0) t.ba = t.ba / batters;
+  return {
+    totals: t,
+    batters,
+    pitchers
+  };
+}
+function getWeakCats(totals, batters, pitchers) {
+  const weak = [];
+  HIT_CATS.forEach(cat => {
+    if (cat === "ba") {
+      if ((totals.ba || 0) < CAT_AVG.ba) weak.push(cat);
+    } else {
+      if ((totals[cat] || 0) < CAT_AVG[cat] * Math.max(1, batters)) weak.push(cat);
+    }
+  });
+  PIT_CATS.forEach(cat => {
+    if (LOWER_IS_BETTER.has(cat)) {
+      if ((totals[cat] || 999) > CAT_AVG[cat] || pitchers === 0) weak.push(cat);
+    } else {
+      if ((totals[cat] || 0) < CAT_AVG[cat] * Math.max(1, pitchers)) weak.push(cat);
+    }
+  });
+  return weak;
+}
+
+// ── Main Component ────────────────────────────────────────────────
+function DraftTool() {
+  const [draftedByOthers, setDraftedByOthers] = useState([]);
+  const [myPicks, setMyPicks] = useState([]);
+  const [search, setSearch] = useState("");
+  const [posFilter, setPosFilter] = useState("ALL");
+  const [sortMode, setSortMode] = useState("keeper"); // "redraft" | "keeper"
+  const [flagFilter, setFlagFilter] = useState("ALL");
+  const [inputName, setInputName] = useState("");
+  const [activeTab, setActiveTab] = useState("board");
+  const [tradedPicks, setTradedPicks] = useState([]);
+  const [tooltip, setTooltip] = useState(null);
+  const [currentPick, setCurrentPick] = useState(1);
+  const [oppTeam, setOppTeam] = useState(Object.keys(KEEPERS).filter(t => t !== MY_TEAM)[0]);
+  const [tradeRound, setTradeRound] = useState(6);
+  const [tradeDir, setTradeDir] = useState("OUT");
+  const myKeeperPlayers = useMemo(() => (KEEPERS[MY_TEAM] || []).map(name => {
+    const p = PLAYER_POOL.find(pl => pl.name === name);
+    return p || {
+      name,
+      pos: KEEPER_POS[name] || "?",
+      team: "—",
+      hr: null,
+      r: null,
+      rbi: null,
+      sb: null,
+      ba: null,
+      era: null,
+      k: null,
+      w: null,
+      sv: null,
+      whip: null,
+      sgRank: 999,
+      flag: null,
+      flagNote: null
+    };
+  }), []);
+  const takenNames = useMemo(() => new Set([...ALL_KEEPERS, ...draftedByOthers, ...myPicks.map(p => p.name)]), [draftedByOthers, myPicks]);
+  const availablePlayers = useMemo(() => PLAYER_POOL.filter(p => !takenNames.has(p.name)).sort((a, b) => a.sgRank - b.sgRank), [takenNames]);
+  const {
+    totals: myTotals,
+    batters,
+    pitchers
+  } = useMemo(() => calcMyTotals([...myKeeperPlayers, ...myPicks]), [myPicks]);
+  const weakCats = useMemo(() => getWeakCats(myTotals, batters, pitchers), [myTotals, batters, pitchers]);
+  const enriched = useMemo(() => {
+    const list = availablePlayers.map(p => {
+      const meta = getKeeperTier(p.name);
+      return {
+        ...p,
+        rotoVal: rotoScore(p),
+        catVals: getCatValue(p),
+        keeperScore: combinedScore(p),
+        meta,
+        fillsWeak: weakCats.some(cat => {
+          if (p[cat] === null || p[cat] === undefined) return false;
+          return LOWER_IS_BETTER.has(cat) ? p[cat] < CAT_AVG[cat] : p[cat] > CAT_AVG[cat];
+        })
+      };
+    });
+    if (sortMode === "keeper") list.sort((a, b) => b.keeperScore - a.keeperScore);
+    // redraft mode keeps natural sgRank order from availablePlayers
+    return list;
+  }, [availablePlayers, weakCats, sortMode]);
+
+  // ── Snipe Risk ────────────────────────────────────────────────────
+  // Slow draft: how many picks happen before my next turn?
+  // Players ranked inside that window are at HIGH risk of being taken.
+  const snipeEnriched = useMemo(() => {
+    const nextPick = MY_PICK_SLOTS[myPicks.length];
+    if (!nextPick) return enriched.map(p => ({
+      ...p,
+      snipeRisk: "none",
+      snipeLabel: "—"
+    }));
+    const picksUntilMine = Math.max(0, nextPick.overall - currentPick);
+    return enriched.map((p, idx) => {
+      let snipeRisk, snipeLabel;
+      if (idx < picksUntilMine * 0.55) {
+        snipeRisk = "high";
+        snipeLabel = "🔴 SNIPE";
+      } else if (idx < picksUntilMine * 1.15) {
+        snipeRisk = "med";
+        snipeLabel = "🟡 RISKY";
+      } else {
+        snipeRisk = "safe";
+        snipeLabel = "🟢 SAFE";
+      }
+      return {
+        ...p,
+        snipeRisk,
+        snipeLabel,
+        picksUntilMine
+      };
+    });
+  }, [enriched, myPicks.length, currentPick, sortMode]);
+  const filteredPlayers = useMemo(() => {
+    let list = snipeEnriched;
+    if (posFilter !== "ALL") list = list.filter(p => p.pos.includes(posFilter));
+    if (flagFilter !== "ALL") list = list.filter(p => p.flag === flagFilter);
+    if (search) list = list.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    return list;
+  }, [snipeEnriched, posFilter, flagFilter, search, sortMode]);
+  const scarcity = useMemo(() => {
+    const c = {};
+    POSITIONS.forEach(pos => {
+      c[pos] = availablePlayers.filter(p => p.pos.includes(pos)).length;
+    });
+    return c;
+  }, [availablePlayers]);
+  const myRoster = useMemo(() => {
+    const f = {};
+    POSITIONS.forEach(p => f[p] = 0);
+    myKeeperPlayers.forEach(p => {
+      const pp = (KEEPER_POS[p.name] || p.pos || "?").split("/")[0];
+      f[pp] = (f[pp] || 0) + 1;
+    });
+    myPicks.forEach(p => {
+      const pp = p.pos.split("/")[0];
+      f[pp] = (f[pp] || 0) + 1;
+    });
+    return f;
+  }, [myPicks]);
+  const needs = useMemo(() => POSITIONS.filter(pos => (myRoster[pos] || 0) < ROSTER_NEEDS[pos]), [myRoster]);
+  const recommendation = useMemo(() => {
+    const needSet = new Set(needs);
+    let rec = enriched.find(p => p.pos.split("/").some(pos => needSet.has(pos)) && p.fillsWeak);
+    if (!rec) rec = enriched.find(p => p.pos.split("/").some(pos => needSet.has(pos)));
+    return rec || enriched[0];
+  }, [enriched, needs]);
+  const nextMyPick = MY_PICK_SLOTS[myPicks.length];
+  const picksBetween = nextMyPick ? Math.max(0, nextMyPick.overall - currentPick) : null;
+  const myTeamTotal = myPicks.length + (KEEPERS[MY_TEAM]?.length || 0);
+  const markDrafted = p => {
+    setDraftedByOthers(d => [...d, p.name]);
+    setCurrentPick(c => c + 1);
+  };
+  const addToMyTeam = p => {
+    setMyPicks(pp => [...pp, p]);
+    setCurrentPick(c => c + 1);
+  };
+  const removeMyPick = name => setMyPicks(p => p.filter(pl => pl.name !== name));
+  const removeDrafted = name => setDraftedByOthers(d => d.filter(n => n !== name));
+  const handleManualDraft = () => {
+    const t = inputName.trim();
+    if (!t) return;
+    setDraftedByOthers(d => [...d, t]);
+    setCurrentPick(c => c + 1);
+    setInputName("");
+  };
+  const pc = pos => POS_COLORS[pos] || "#888";
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Space Mono','Courier New',monospace",
+      background: "#07080e",
+      minHeight: "100vh",
+      color: "#d0d8ec",
+      fontSize: 12
+    }
+  }, /*#__PURE__*/React.createElement("style", null, `
+        *{box-sizing:border-box;}
+        ::-webkit-scrollbar{width:4px;height:4px;}
+        ::-webkit-scrollbar-thumb{background:#1e2535;border-radius:3px;}
+        .row:hover{background:#0d1020!important;}
+        .btn{transition:all 0.15s;cursor:pointer;border:none;font-family:inherit;}
+        .btn:hover{filter:brightness(1.3);}
+        .tab{transition:all 0.2s;cursor:pointer;border:none;background:none;font-family:inherit;}
+        input,select{outline:none;font-family:inherit;}
+        .tip{position:fixed;background:#141928;border:1px solid #2a3555;border-radius:6px;padding:8px 12px;font-size:11px;max-width:240px;z-index:9999;pointer-events:none;line-height:1.6;}
+      `), tooltip && /*#__PURE__*/React.createElement("div", {
+    className: "tip",
+    style: {
+      left: tooltip.x + 12,
+      top: tooltip.y - 10
+    }
+  }, tooltip.flag && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: FLAG_COLORS[tooltip.flag],
+      fontWeight: 700,
+      marginBottom: 3
+    }
+  }, tooltip.flag), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#94a3b8"
+    }
+  }, tooltip.note)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg,#0a0c18,#101525,#0a0c18)",
+      borderBottom: "1px solid #1a2035",
+      padding: "10px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      flexWrap: "wrap",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 700,
+      letterSpacing: 3,
+      color: "#f1f5f9"
+    }
+  }, "\u26BE HOMERS DRAFT HQ \u2014 2026"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#3a4a65",
+      letterSpacing: 2,
+      marginTop: 2
+    }
+  }, "TIER2BORO \xB7 12-TEAM SNAKE \xB7 5\xD75 ROTO \xB7 SLOT #2 (ODD=PICK 2 / EVEN=PICK 11) \xB7 MAR 8 2026")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      flexWrap: "wrap"
+    }
+  }, nextMyPick && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0a1530",
+      border: "1px solid #1e3570",
+      borderRadius: 5,
+      padding: "4px 10px",
+      fontSize: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#3a4a65"
+    }
+  }, "NEXT: "), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#60a5fa"
+    }
+  }, "R", nextMyPick.round, " Pick ", nextMyPick.pickInRound), picksBetween > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#2a3555"
+    }
+  }, " (", picksBetween, " picks away)"), picksBetween === 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#fbbf24"
+    }
+  }, " \u2190 YOUR TURN")), recommendation && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#091a0d",
+      border: "1px solid #1a4a2a",
+      borderRadius: 5,
+      padding: "4px 10px",
+      fontSize: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#3a4a65"
+    }
+  }, "SUGGEST: "), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#4ade80",
+      fontWeight: 700
+    }
+  }, recommendation.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 5,
+      background: pc(recommendation.pos.split("/")[0]) + "22",
+      color: pc(recommendation.pos.split("/")[0]),
+      border: `1px solid ${pc(recommendation.pos.split("/")[0])}44`,
+      borderRadius: 2,
+      padding: "0 4px",
+      fontSize: 8
+    }
+  }, recommendation.pos.split("/")[0]), recommendation.flag && /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 4,
+      fontSize: 9,
+      color: FLAG_COLORS[recommendation.flag]
+    }
+  }, recommendation.flag.split(" ")[0])))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 4,
+      flexWrap: "wrap",
+      alignItems: "center",
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 8,
+      color: "#2a3555",
+      letterSpacing: 2
+    }
+  }, "POS NEEDS"), POSITIONS.map(pos => {
+    const have = myRoster[pos] || 0,
+      need = ROSTER_NEEDS[pos],
+      ok = have >= need;
+    return /*#__PURE__*/React.createElement("div", {
+      key: pos,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        background: ok ? "#091409" : "#160909",
+        border: `1px solid ${ok ? "#16532c" : "#5c1515"}`,
+        borderRadius: 3,
+        padding: "0 5px",
+        fontSize: 9
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: pc(pos)
+      }
+    }, pos), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: ok ? "#4ade80" : "#f87171"
+      }
+    }, have, "/", need));
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 8,
+      color: "#2a3555",
+      letterSpacing: 1,
+      marginLeft: 8
+    }
+  }, "WEAK CATS"), weakCats.length === 0 ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      color: "#4ade80"
+    }
+  }, "ALL OK") : weakCats.map(cat => /*#__PURE__*/React.createElement("span", {
+    key: cat,
+    style: {
+      background: "#1a0a0a",
+      border: "1px solid #5c1515",
+      borderRadius: 3,
+      padding: "0 5px",
+      fontSize: 9,
+      color: "#f87171"
+    }
+  }, CAT_LABELS[cat])), /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: "auto",
+      fontSize: 9,
+      color: "#2a3555"
+    }
+  }, "ROSTER ", myTeamTotal, "/14 \xB7 PICK #", currentPick))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0a0c18",
+      borderBottom: "1px solid #1a2035",
+      padding: "0 16px",
+      display: "flex",
+      overflowX: "auto"
+    }
+  }, [["board", "DRAFT BOARD"], ["myteam", "MY TEAM & CATS"], ["opponents", "OPPONENT ROSTERS"], ["scarcity", "SCARCITY"], ["upcoming", "MY PICKS"], ["traded", "TRADED PICKS"]].map(_ref => {
+    let [k, l] = _ref;
+    return /*#__PURE__*/React.createElement("button", {
+      key: k,
+      className: "tab",
+      onClick: () => setActiveTab(k),
+      style: {
+        padding: "8px 14px",
+        fontSize: 9,
+        letterSpacing: 2,
+        color: activeTab === k ? "#f1f5f9" : "#3a4a65",
+        borderBottom: activeTab === k ? "2px solid #3b82f6" : "2px solid transparent",
+        whiteSpace: "nowrap"
+      }
+    }, l);
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      maxWidth: 1400,
+      margin: "0 auto"
+    }
+  }, activeTab === "board" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 8,
+      flexWrap: "wrap",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    placeholder: "Search player...",
+    value: search,
+    onChange: e => setSearch(e.target.value),
+    style: {
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      color: "#d0d8ec",
+      padding: "4px 9px",
+      borderRadius: 4,
+      fontSize: 11,
+      width: 150
+    }
+  }), ["ALL", ...POSITIONS].map(p => /*#__PURE__*/React.createElement("button", {
+    key: p,
+    className: "btn",
+    onClick: () => setPosFilter(p),
+    style: {
+      background: posFilter === p ? POS_COLORS[p] || "#3b82f6" : "#0d1020",
+      color: "#fff",
+      padding: "3px 8px",
+      borderRadius: 3,
+      fontSize: 8,
+      letterSpacing: 1,
+      border: `1px solid ${posFilter === p ? "transparent" : "#1a2035"}`
+    }
+  }, p)), /*#__PURE__*/React.createElement("select", {
+    value: flagFilter,
+    onChange: e => setFlagFilter(e.target.value),
+    style: {
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      color: "#d0d8ec",
+      padding: "3px 8px",
+      borderRadius: 3,
+      fontSize: 9
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "ALL"
+  }, "ALL FLAGS"), ["↑ Breakout", "⚡ Elite Contact", "🎯 Elite Stuff", "🔥 Trending", "🩺 Health Risk", "⚠️ Regression"].map(f => /*#__PURE__*/React.createElement("option", {
+    key: f,
+    value: f
+  }, f))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 2,
+      marginLeft: 8,
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      borderRadius: 4,
+      padding: 2
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: () => setSortMode("keeper"),
+    style: {
+      background: sortMode === "keeper" ? "#1a4a2a" : "transparent",
+      color: sortMode === "keeper" ? "#4ade80" : "#3a4a65",
+      padding: "2px 10px",
+      borderRadius: 3,
+      fontSize: 8,
+      letterSpacing: 1
+    }
+  }, "\uD83C\uDFC6 KEEPER VALUE"), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: () => setSortMode("redraft"),
+    style: {
+      background: sortMode === "redraft" ? "#1a2a4a" : "transparent",
+      color: sortMode === "redraft" ? "#60a5fa" : "#3a4a65",
+      padding: "2px 10px",
+      borderRadius: 3,
+      fontSize: 8,
+      letterSpacing: 1
+    }
+  }, "\uD83D\uDCCB 2026 REDRAFT"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    placeholder: "Mark unlisted player drafted (Enter)...",
+    value: inputName,
+    onChange: e => setInputName(e.target.value),
+    onKeyDown: e => e.key === "Enter" && handleManualDraft(),
+    style: {
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      color: "#d0d8ec",
+      padding: "4px 9px",
+      borderRadius: 4,
+      fontSize: 11,
+      flex: 1,
+      maxWidth: 380
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: handleManualDraft,
+    style: {
+      background: "#1a2035",
+      color: "#64748b",
+      border: "1px solid #2a3555",
+      padding: "4px 11px",
+      borderRadius: 4,
+      fontSize: 9
+    }
+  }, "MARK GONE"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      alignSelf: "center",
+      marginLeft: "auto"
+    }
+  }, filteredPlayers.length, " available")), (() => {
+    const nextPick = MY_PICK_SLOTS[myPicks.length];
+    if (!nextPick) return null;
+    const picksUntilMine = Math.max(0, nextPick.overall - currentPick);
+    const atRisk = snipeEnriched.filter(p => p.snipeRisk === "high" && needs.some(n => p.pos.includes(n))).slice(0, 5);
+    const borderline = snipeEnriched.filter(p => p.snipeRisk === "med" && needs.some(n => p.pos.includes(n))).slice(0, 4);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#120808",
+        border: "1px solid #5c1515",
+        borderRadius: 6,
+        padding: "9px 12px",
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#f87171",
+        letterSpacing: 2,
+        marginBottom: 6
+      }
+    }, "\u26A0\uFE0F SLOW DRAFT SNIPE ALERT \u2014 ", picksUntilMine, " PICKS BEFORE YOUR TURN (R", nextPick.round, ", Pick ", nextPick.pickInRound, ")"), atRisk.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: "#f87171",
+        marginRight: 8
+      }
+    }, "\uD83D\uDD34 LIKELY GONE \u2014 targets that fill your needs:"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        flexWrap: "wrap",
+        marginTop: 4
+      }
+    }, atRisk.map(p => /*#__PURE__*/React.createElement("div", {
+      key: p.name,
+      style: {
+        background: "#1a0808",
+        border: "1px solid #5c1515",
+        borderRadius: 3,
+        padding: "2px 9px",
+        fontSize: 9
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#f87171",
+        fontWeight: 700
+      }
+    }, p.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#3a4a65",
+        marginLeft: 5
+      }
+    }, "#", p.sgRank), /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 5,
+        background: (POS_COLORS[p.pos.split("/")[0]] || "#888") + "22",
+        color: POS_COLORS[p.pos.split("/")[0]] || "#888",
+        borderRadius: 2,
+        padding: "0 4px",
+        fontSize: 8
+      }
+    }, p.pos.split("/")[0]))))), borderline.length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: "#fbbf24",
+        marginRight: 8
+      }
+    }, "\uD83D\uDFE1 BORDERLINE \u2014 may survive to your pick:"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        flexWrap: "wrap",
+        marginTop: 4
+      }
+    }, borderline.map(p => /*#__PURE__*/React.createElement("div", {
+      key: p.name,
+      style: {
+        background: "#131008",
+        border: "1px solid #4a3a10",
+        borderRadius: 3,
+        padding: "2px 9px",
+        fontSize: 9
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#fbbf24",
+        fontWeight: 700
+      }
+    }, p.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#3a4a65",
+        marginLeft: 5
+      }
+    }, "#", p.sgRank), /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 5,
+        background: (POS_COLORS[p.pos.split("/")[0]] || "#888") + "22",
+        color: POS_COLORS[p.pos.split("/")[0]] || "#888",
+        borderRadius: 2,
+        padding: "0 4px",
+        fontSize: 8
+      }
+    }, p.pos.split("/")[0]))))), atRisk.length === 0 && borderline.length === 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#4ade80"
+      }
+    }, "\u2713 Your top targets at your needed positions look safe for this pick window."));
+  })(), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 5,
+      fontSize: 9,
+      color: "#3a4a65",
+      flexWrap: "wrap",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#2a3555",
+      letterSpacing: 1,
+      fontSize: 8
+    }
+  }, "KEEPER TIER:"), [["S", "Multi-yr anchor"], ["A", "Strong keeper"], ["B", "Solid 2-3yr"], ["C", "Win-now only"], ["D", "Do not keep"]].map(_ref2 => {
+    let [t, l] = _ref2;
+    return /*#__PURE__*/React.createElement("span", {
+      key: t,
+      style: {
+        background: KEEPER_TIER_BG[t],
+        color: KEEPER_TIER_COLORS[t],
+        border: `1px solid ${KEEPER_TIER_COLORS[t]}44`,
+        borderRadius: 3,
+        padding: "1px 7px",
+        fontSize: 8
+      }
+    }, t, " = ", l);
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#a78bfa",
+      background: "#1a0a30",
+      border: "1px solid #4c1d9544",
+      borderRadius: 2,
+      padding: "1px 5px",
+      fontSize: 8
+    }
+  }, "PROS = prospect")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      marginBottom: 6,
+      fontSize: 9,
+      color: "#3a4a65",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      borderLeft: "3px solid #f59e0b",
+      paddingLeft: 5
+    }
+  }, "Gold border = fills positional need"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      borderLeft: "3px solid #22d3ee",
+      paddingLeft: 5
+    }
+  }, "Cyan border = helps weak roto cat"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      borderLeft: "3px solid #f87171",
+      paddingLeft: 5
+    }
+  }, "Red row = likely sniped before your pick"), sortMode === "keeper" && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#4ade80"
+    }
+  }, "\uD83C\uDFC6 Sorted by keeper value (age + dynasty rank + 2026 production)"), sortMode === "redraft" && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#60a5fa"
+    }
+  }, "\uD83D\uDCCB Sorted by 2026 redraft rank only")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "28px 130px 78px 32px 32px 32px 32px 32px 42px 42px 34px 32px 32px 42px 72px 50px 60px 88px",
+      padding: "4px 8px",
+      background: "#08090e",
+      fontSize: 8,
+      color: "#2a3555",
+      letterSpacing: 1,
+      borderBottom: "1px solid #1a2035",
+      borderRadius: "4px 4px 0 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, "#"), /*#__PURE__*/React.createElement("div", null, "PLAYER"), /*#__PURE__*/React.createElement("div", null, "POS\xB7FLAG"), /*#__PURE__*/React.createElement("div", null, "TM"), /*#__PURE__*/React.createElement("div", null, "HR"), /*#__PURE__*/React.createElement("div", null, "R"), /*#__PURE__*/React.createElement("div", null, "RBI"), /*#__PURE__*/React.createElement("div", null, "SB"), /*#__PURE__*/React.createElement("div", null, "AVG"), /*#__PURE__*/React.createElement("div", null, "ERA"), /*#__PURE__*/React.createElement("div", null, "K"), /*#__PURE__*/React.createElement("div", null, "W"), /*#__PURE__*/React.createElement("div", null, "SV"), /*#__PURE__*/React.createElement("div", null, "WHIP"), /*#__PURE__*/React.createElement("div", null, "KPR VALUE"), /*#__PURE__*/React.createElement("div", null, "SNIPE?"), /*#__PURE__*/React.createElement("div", null, "CAT \u25B3"), /*#__PURE__*/React.createElement("div", null, "ACTION")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      border: "1px solid #1a2035",
+      borderTop: "none",
+      borderRadius: "0 0 4px 4px",
+      overflow: "hidden",
+      maxHeight: "58vh",
+      overflowY: "auto"
+    }
+  }, filteredPlayers.slice(0, 160).map((p, i) => {
+    const isNeed = needs.some(n => p.pos.includes(n));
+    const isWeak = p.fillsWeak;
+    const pit = p.era !== null;
+    const topCats = Object.entries(p.catVals).filter(_ref3 => {
+      let [, v] = _ref3;
+      return v > 0;
+    }).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const borderColor = isNeed ? "#f59e0b" : isWeak ? "#22d3ee99" : "transparent";
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.name + i,
+      className: "row",
+      style: {
+        display: "grid",
+        gridTemplateColumns: "28px 130px 78px 32px 32px 32px 32px 32px 42px 42px 34px 32px 32px 42px 72px 50px 60px 88px",
+        padding: "4px 8px",
+        background: p.snipeRisk === "high" ? i % 2 === 0 ? "#130a0a" : "#170c0c" : i % 2 === 0 ? "#07080e" : "#0b0d18",
+        borderBottom: "1px solid #0d0f1a",
+        fontSize: 11,
+        alignItems: "center",
+        borderLeft: `3px solid ${borderColor}`
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#2a3555",
+        fontSize: 9
+      }
+    }, p.sgRank), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        color: "#e2e8f0",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, p.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 2,
+        alignItems: "center"
+      }
+    }, p.pos.split("/").map(pos => /*#__PURE__*/React.createElement("span", {
+      key: pos,
+      style: {
+        background: pc(pos) + "22",
+        color: pc(pos),
+        border: `1px solid ${pc(pos)}44`,
+        borderRadius: 2,
+        padding: "0 3px",
+        fontSize: 8
+      }
+    }, pos)), p.flag && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        cursor: "help",
+        color: FLAG_COLORS[p.flag]
+      },
+      onMouseEnter: e => setTooltip({
+        flag: p.flag,
+        note: p.flagNote,
+        x: e.clientX,
+        y: e.clientY
+      }),
+      onMouseLeave: () => setTooltip(null)
+    }, p.flag.split(" ")[0])), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#3a4a65",
+        fontSize: 9
+      }
+    }, p.team), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#fbbf24"
+      }
+    }, p.hr ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#94a3b8"
+      }
+    }, p.r ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#94a3b8"
+      }
+    }, p.rbi ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#34d399"
+      }
+    }, p.sb ?? "—"), /*#__PURE__*/React.createElement("div", null, p.ba ? p.ba.toFixed(3) : "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: pit ? p.era < 3.2 ? "#4ade80" : p.era < 3.7 ? "#fbbf24" : "#f87171" : "#1a2035"
+      }
+    }, p.era ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#94a3b8"
+      }
+    }, p.k ?? "—"), /*#__PURE__*/React.createElement("div", null, p.w ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#60a5fa"
+      }
+    }, p.sv ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: pit ? p.whip < 1.1 ? "#4ade80" : p.whip < 1.2 ? "#fbbf24" : "#f87171" : "#1a2035"
+      }
+    }, p.whip ?? "—"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 1
+      },
+      onMouseEnter: e => setTooltip({
+        flag: null,
+        note: `Age ${p.meta?.age ?? "??"} · Dyn #${p.meta?.dynRank ?? "—"} · ${p.meta?.dynNote ?? "No dynasty data"}`,
+        x: e.clientX,
+        y: e.clientY
+      }),
+      onMouseLeave: () => setTooltip(null)
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 3,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: KEEPER_TIER_BG[p.meta?.keeperTier] || "#0d1020",
+        color: KEEPER_TIER_COLORS[p.meta?.keeperTier] || "#888",
+        border: `1px solid ${KEEPER_TIER_COLORS[p.meta?.keeperTier] || "#888"}44`,
+        borderRadius: 2,
+        padding: "0 4px",
+        fontSize: 9,
+        fontWeight: 700
+      }
+    }, p.meta?.keeperTier || "?"), p.meta?.prospect && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 7,
+        color: "#a78bfa",
+        background: "#1a0a30",
+        border: "1px solid #4c1d9544",
+        borderRadius: 2,
+        padding: "0 3px"
+      }
+    }, "PROS")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: "#3a4a65"
+      }
+    }, p.meta?.age ? `Age ${p.meta.age}` : "—", p.meta?.dynRank ? ` · Dyn#${p.meta.dynRank}` : "")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        fontWeight: 700,
+        color: p.snipeRisk === "high" ? "#f87171" : p.snipeRisk === "med" ? "#fbbf24" : "#4ade80",
+        whiteSpace: "nowrap"
+      },
+      onMouseEnter: e => setTooltip({
+        flag: null,
+        note: `${p.picksUntilMine} picks before your turn. Player is ranked #${p.sgRank} overall — ${p.snipeRisk === "high" ? "very likely to be gone" : p.snipeRisk === "med" ? "may still be available" : "should still be here"}.`,
+        x: e.clientX,
+        y: e.clientY
+      }),
+      onMouseLeave: () => setTooltip(null)
+    }, p.snipeLabel), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+        cursor: "help"
+      },
+      onMouseEnter: e => setTooltip({
+        flag: null,
+        note: topCats.length ? `Helps: ${topCats.map(_ref4 => {
+          let [c, v] = _ref4;
+          return `${CAT_LABELS[c]} +${v.toFixed(0)}`;
+        }).join(", ")}` : "Neutral across categories",
+        x: e.clientX,
+        y: e.clientY
+      }),
+      onMouseLeave: () => setTooltip(null)
+    }, topCats.slice(0, 2).map(_ref5 => {
+      let [cat, val] = _ref5;
+      const isWC = weakCats.includes(cat);
+      return /*#__PURE__*/React.createElement("div", {
+        key: cat,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 2
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 7,
+          color: isWC ? "#f87171" : "#3a4a65",
+          width: 22,
+          textAlign: "right"
+        }
+      }, CAT_LABELS[cat]), /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: Math.min(Math.abs(val) * 1.0, 28),
+          height: 3,
+          background: isWC ? "#f87171" : "#3b82f6",
+          borderRadius: 1
+        }
+      }));
+    }), topCats.length === 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 8,
+        color: "#1a2535"
+      }
+    }, "\u2014")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 3
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "btn",
+      onClick: () => addToMyTeam(p),
+      style: {
+        background: "#1a3570",
+        color: "#93c5fd",
+        border: "1px solid #1e4080",
+        padding: "2px 6px",
+        borderRadius: 3,
+        fontSize: 8
+      }
+    }, "MINE"), /*#__PURE__*/React.createElement("button", {
+      className: "btn",
+      onClick: () => markDrafted(p),
+      style: {
+        background: "#151515",
+        color: "#3a4a65",
+        border: "1px solid #1a2035",
+        padding: "2px 6px",
+        borderRadius: 3,
+        fontSize: 8
+      }
+    }, "GONE")));
+  })), draftedByOthers.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 4
+    }
+  }, "DRAFTED BY OTHERS"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 4
+    }
+  }, draftedByOthers.map(name => /*#__PURE__*/React.createElement("div", {
+    key: name,
+    style: {
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      borderRadius: 3,
+      padding: "2px 7px",
+      fontSize: 9,
+      display: "flex",
+      gap: 5,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#3a4a65",
+      textDecoration: "line-through"
+    }
+  }, name), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: () => removeDrafted(name),
+    style: {
+      background: "none",
+      color: "#2a3555",
+      fontSize: 10
+    }
+  }, "\u2715")))))), activeTab === "myteam" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 8
+    }
+  }, "YOUR ROSTER"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 5
+    }
+  }, [...myKeeperPlayers, ...myPicks].map((p, idx) => {
+    const isKeeper = idx < myKeeperPlayers.length;
+    const pos = (KEEPER_POS[p.name] || p.pos || "?").split("/")[0];
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.name + idx,
+      style: {
+        background: isKeeper ? "#091409" : "#0a0f1e",
+        border: `1px solid ${isKeeper ? "#1a4a2a" : "#1e2d5a"}`,
+        borderRadius: 5,
+        padding: "7px 10px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: pc(pos) + "22",
+        color: pc(pos),
+        border: `1px solid ${pc(pos)}44`,
+        borderRadius: 2,
+        padding: "0 5px",
+        fontSize: 9,
+        minWidth: 28,
+        textAlign: "center"
+      }
+    }, pos), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700,
+        color: "#f1f5f9"
+      }
+    }, p.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: "#3a4a65"
+      }
+    }, p.team), p.flag && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: FLAG_COLORS[p.flag]
+      }
+    }, p.flag)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: isKeeper ? "#4ade80" : "#3b82f6"
+      }
+    }, isKeeper ? "KEEPER" : `R${KEEPER_ROUNDS + idx - myKeeperPlayers.length + 1}`), !isKeeper && /*#__PURE__*/React.createElement("button", {
+      className: "btn",
+      onClick: () => removeMyPick(p.name),
+      style: {
+        background: "#1e0808",
+        color: "#f87171",
+        border: "1px solid #3c1010",
+        padding: "1px 5px",
+        borderRadius: 2,
+        fontSize: 8
+      }
+    }, "\u2715")));
+  }), Array.from({
+    length: Math.max(0, 14 - myTeamTotal)
+  }).map((_, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      background: "transparent",
+      border: "1px dashed #1a2035",
+      borderRadius: 5,
+      padding: "7px 10px",
+      color: "#1a2035",
+      fontSize: 9,
+      letterSpacing: 2
+    }
+  }, "OPEN SLOT")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 8
+    }
+  }, "ROTO CATEGORY PROJECTION"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0a0c18",
+      border: "1px solid #1a2035",
+      borderRadius: 6,
+      padding: 12
+    }
+  }, ALL_CATS.map(cat => {
+    const isLower = LOWER_IS_BETTER.has(cat);
+    const val = myTotals[cat] || 0;
+    const isWeak = weakCats.includes(cat);
+    const displayVal = cat === "ba" ? val.toFixed(3) : cat === "era" || cat === "whip" ? val.toFixed(2) : Math.round(val);
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat,
+      style: {
+        marginBottom: 7
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: isWeak ? "#f87171" : "#94a3b8",
+        fontWeight: isWeak ? 700 : 400
+      }
+    }, CAT_LABELS[cat], isWeak ? " ⚠️" : ""), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: isWeak ? "#f87171" : "#4ade80"
+      }
+    }, displayVal, isLower ? " ↓" : "")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#0d1020",
+        borderRadius: 2,
+        height: 4,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${Math.min(100, cat === "ba" ? val / 0.32 * 100 : cat === "era" ? Math.max(0, (5 - val) / 5) * 100 : cat === "whip" ? Math.max(0, (1.6 - val) / 1.6) * 100 : Math.min(val / (CAT_AVG[cat] * 10) * 100, 100))}%`,
+        height: "100%",
+        background: isWeak ? "#ef4444" : "#22c55e",
+        borderRadius: 2
+      }
+    })));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      fontSize: 9,
+      color: "#2a3555"
+    }
+  }, "Based on your ", myTeamTotal, " current players. Add picks to update projections.")), weakCats.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 6
+    }
+  }, "BEST AVAILABLE FOR WEAK CATS"), weakCats.slice(0, 5).map(cat => {
+    const best = enriched.filter(p => p[cat] !== null && p[cat] !== undefined && (LOWER_IS_BETTER.has(cat) ? p[cat] < CAT_AVG[cat] : p[cat] > CAT_AVG[cat])).slice(0, 3);
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat,
+      style: {
+        marginBottom: 7
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#f87171",
+        marginBottom: 3
+      }
+    }, CAT_LABELS[cat], " \u2014 top available:"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        flexWrap: "wrap"
+      }
+    }, best.map(p => /*#__PURE__*/React.createElement("div", {
+      key: p.name,
+      style: {
+        background: "#0d1020",
+        border: "1px solid #1a2035",
+        borderRadius: 3,
+        padding: "2px 8px",
+        fontSize: 9
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#94a3b8"
+      }
+    }, p.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#4ade80",
+        marginLeft: 5
+      }
+    }, cat === "ba" || cat === "era" || cat === "whip" ? Number(p[cat]).toFixed(cat === "ba" ? 3 : 2) : p[cat])))));
+  })))), activeTab === "opponents" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 8
+    }
+  }, "ALL TEAMS \u2014 KEEPER POSITION OVERVIEW"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflowX: "auto"
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    style: {
+      borderCollapse: "collapse",
+      width: "100%",
+      fontSize: 10
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: "#0a0c18"
+    }
+  }, /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: "4px 10px",
+      textAlign: "left",
+      color: "#3a4a65",
+      fontSize: 9,
+      fontWeight: 400,
+      whiteSpace: "nowrap"
+    }
+  }, "TEAM"), POSITIONS.map(pos => /*#__PURE__*/React.createElement("th", {
+    key: pos,
+    style: {
+      padding: "4px 6px",
+      textAlign: "center",
+      color: pc(pos),
+      fontSize: 9,
+      fontWeight: 400
+    }
+  }, pos)), /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: "4px 10px",
+      textAlign: "left",
+      color: "#3a4a65",
+      fontSize: 9,
+      fontWeight: 400
+    }
+  }, "KEEPERS"))), /*#__PURE__*/React.createElement("tbody", null, Object.entries(KEEPERS).map((_ref6, ti) => {
+    let [team, keepers] = _ref6;
+    const isMe = team === MY_TEAM;
+    const posCounts = {};
+    POSITIONS.forEach(p => posCounts[p] = 0);
+    keepers.forEach(name => {
+      const pos = KEEPER_POS[name] || "?";
+      if (posCounts[pos] !== undefined) posCounts[pos]++;
+    });
+    return /*#__PURE__*/React.createElement("tr", {
+      key: team,
+      style: {
+        background: ti % 2 === 0 ? "#07080e" : "#0b0d18",
+        outline: isMe ? "1px solid #1e4080" : "none"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "5px 10px",
+        color: isMe ? "#60a5fa" : "#94a3b8",
+        fontWeight: isMe ? 700 : 400,
+        whiteSpace: "nowrap"
+      }
+    }, isMe ? "★ " : "", team), POSITIONS.map(pos => /*#__PURE__*/React.createElement("td", {
+      key: pos,
+      style: {
+        padding: "4px 6px",
+        textAlign: "center"
+      }
+    }, posCounts[pos] > 0 ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: pc(pos) + "33",
+        color: pc(pos),
+        borderRadius: 2,
+        padding: "0 5px",
+        fontSize: 9
+      }
+    }, posCounts[pos]) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#1a2035"
+      }
+    }, "\xB7"))), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "4px 10px",
+        color: "#3a4a65",
+        fontSize: 9
+      }
+    }, keepers.join(", ")));
+  }))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0a0c18",
+      border: "1px solid #1a2035",
+      borderRadius: 6,
+      padding: 12,
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#f59e0b",
+      marginBottom: 8,
+      fontSize: 9,
+      letterSpacing: 1
+    }
+  }, "\uD83D\uDCCB DRAFT STRATEGY \u2014 POSITION SCARCITY ANALYSIS"), [{
+    pos: "SS",
+    color: "#8b5cf6",
+    note: "7 SS keepers across 7 teams. Only 5 teams still need SS. Top available: Z Neto (#18 — best value), T Turner (#26 — elite SB/R), B Bichette (#67), C Seager (#84 — injury risk). Grab one by round 7."
+  }, {
+    pos: "SP",
+    color: "#3b82f6",
+    note: "8 SPs kept but you only have Skubal. Need 2 more. Deep market: M Fried (#40), G Kirby (#45), H Greene (#48), C Ragans (#78), F Valdez (#79), Z Wheeler (#89), G Cole (#124). Wait until round 8+ for depth."
+  }, {
+    pos: "C",
+    color: "#06b6d4",
+    note: "Only 3 Cs kept league-wide. 9 teams still need a catcher. Available: W Contreras (#107), S Perez (#132), H Goodman (#139). Catchers go fast — target rounds 9–11."
+  }, {
+    pos: "RP",
+    color: "#ef4444",
+    note: "Only 2 RP keepers (E Diaz, A Munoz). Top closers: M Miller (#41), C Smith (#68), J Hader (#72), Jh Duran (#83), R Helsley (#137). Secure 1 elite closer rounds 6–8."
+  }, {
+    pos: "2B",
+    color: "#10b981",
+    note: "3 2B keepers. Strong depth: L Keaschall (#86), J Altuve (#92), N Hoerner (#134), B Stott (#159), M McLain (#160). Can wait until rounds 10–12."
+  }].map(_ref7 => {
+    let {
+      pos,
+      color,
+      note
+    } = _ref7;
+    return /*#__PURE__*/React.createElement("div", {
+      key: pos,
+      style: {
+        marginBottom: 8,
+        display: "flex",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: color + "22",
+        color,
+        border: `1px solid ${color}44`,
+        borderRadius: 3,
+        padding: "1px 7px",
+        fontSize: 9,
+        minWidth: 28,
+        textAlign: "center",
+        alignSelf: "flex-start",
+        marginTop: 2
+      }
+    }, pos), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#64748b",
+        lineHeight: 1.6,
+        fontSize: 10
+      }
+    }, note));
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 8,
+      alignItems: "center",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2
+    }
+  }, "INSPECT TEAM:"), Object.keys(KEEPERS).filter(t => t !== MY_TEAM).map(team => /*#__PURE__*/React.createElement("button", {
+    key: team,
+    className: "btn",
+    onClick: () => setOppTeam(team),
+    style: {
+      background: oppTeam === team ? "#1a3570" : "#0d1020",
+      color: oppTeam === team ? "#93c5fd" : "#475569",
+      border: `1px solid ${oppTeam === team ? "#1e4080" : "#1a2035"}`,
+      padding: "3px 9px",
+      borderRadius: 4,
+      fontSize: 9
+    }
+  }, team))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#0a0c18",
+      border: "1px solid #1a2035",
+      borderRadius: 6,
+      padding: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#60a5fa",
+      marginBottom: 8,
+      fontWeight: 700
+    }
+  }, oppTeam), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6,
+      marginBottom: 10
+    }
+  }, (KEEPERS[oppTeam] || []).map(name => {
+    const pos = KEEPER_POS[name] || "?";
+    const p = PLAYER_POOL.find(pl => pl.name === name);
+    return /*#__PURE__*/React.createElement("div", {
+      key: name,
+      style: {
+        background: "#0d1020",
+        border: "1px solid #1a2035",
+        borderRadius: 4,
+        padding: "6px 10px",
+        minWidth: 130
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        alignItems: "center",
+        marginBottom: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: pc(pos) + "22",
+        color: pc(pos),
+        border: `1px solid ${pc(pos)}44`,
+        borderRadius: 2,
+        padding: "0 4px",
+        fontSize: 8
+      }
+    }, pos), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700,
+        color: "#f1f5f9",
+        fontSize: 10
+      }
+    }, name)), p && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: "#3a4a65"
+      }
+    }, "#", p.sgRank, " \xB7 ", p.team), p?.flag && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: FLAG_COLORS[p.flag],
+        marginTop: 1
+      }
+    }, p.flag));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#3a4a65"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#f59e0b"
+    }
+  }, "Likely needs in draft: "), POSITIONS.filter(pos => {
+    const cnt = (KEEPERS[oppTeam] || []).filter(n => KEEPER_POS[n] === pos).length;
+    return cnt < ROSTER_NEEDS[pos];
+  }).join(", "))))), activeTab === "scarcity" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 10
+    }
+  }, "POSITIONAL SCARCITY \u2014 PLAYERS REMAINING AFTER KEEPERS"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill,minmax(195px,1fr))",
+      gap: 10
+    }
+  }, POSITIONS.map(pos => {
+    const total = PLAYER_POOL.filter(p => p.pos.includes(pos)).length;
+    const avail = scarcity[pos] || 0;
+    const pct = total > 0 ? (total - avail) / total : 0;
+    const top6 = enriched.filter(p => p.pos.includes(pos)).slice(0, 6);
+    return /*#__PURE__*/React.createElement("div", {
+      key: pos,
+      style: {
+        background: "#0a0c18",
+        border: `1px solid ${pc(pos)}22`,
+        borderRadius: 6,
+        padding: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: pc(pos) + "22",
+        color: pc(pos),
+        border: `1px solid ${pc(pos)}44`,
+        borderRadius: 3,
+        padding: "1px 8px",
+        fontSize: 11,
+        fontWeight: 700
+      }
+    }, pos), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: "#3a4a65"
+      }
+    }, avail, " left")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "#0d0f1a",
+        borderRadius: 2,
+        height: 4,
+        marginBottom: 7,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${pct * 100}%`,
+        height: "100%",
+        background: pct > 0.6 ? "#ef4444" : pct > 0.35 ? "#f59e0b" : "#22c55e",
+        borderRadius: 2
+      }
+    })), top6.map(p => /*#__PURE__*/React.createElement("div", {
+      key: p.name,
+      style: {
+        fontSize: 9,
+        padding: "2px 0",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderBottom: "1px solid #0d0f1a"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: needs.some(n => p.pos.includes(n)) ? "#fbbf24" : "#94a3b8"
+      }
+    }, p.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 4
+      }
+    }, p.flag && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 8,
+        color: FLAG_COLORS[p.flag]
+      }
+    }, p.flag.split(" ")[0]), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#2a3555",
+        fontSize: 8
+      }
+    }, "#", p.sgRank)))), !top6.length && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#1a2035"
+      }
+    }, "DEPLETED"));
+  }))), activeTab === "upcoming" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 10
+    }
+  }, "YOUR SNAKE SCHEDULE \u2014 ODD ROUNDS: PICK #2 \xB7 EVEN ROUNDS: PICK #11"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))",
+      gap: 7
+    }
+  }, MY_PICK_SLOTS.map((slot, idx) => {
+    const done = idx < myPicks.length;
+    const current = idx === myPicks.length;
+    const pick = myPicks[idx];
+    const traded = tradedPicks.find(t => t.round === slot.round);
+    return /*#__PURE__*/React.createElement("div", {
+      key: slot.round,
+      style: {
+        background: current ? "#091525" : done ? "#091409" : "#0a0c18",
+        border: `1px solid ${current ? "#1e4080" : done ? "#1a4a2a" : "#1a2035"}`,
+        borderRadius: 6,
+        padding: "9px 11px",
+        opacity: traded && traded.direction === "OUT" ? 0.45 : 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: current ? "#60a5fa" : "#3a4a65",
+        letterSpacing: 1
+      }
+    }, "ROUND ", slot.round, " \xB7 PICK ", slot.pickInRound, "/", NUM_TEAMS, current && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#fbbf24",
+        marginLeft: 6
+      }
+    }, "\u2190 YOUR TURN")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: "#2a3555"
+      }
+    }, "Overall #", slot.overall)), traded && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 8,
+        color: "#a78bfa",
+        background: "#1a0a30",
+        border: "1px solid #4c1d95",
+        borderRadius: 3,
+        padding: "1px 5px"
+      }
+    }, "TRADED ", traded.direction)), done && pick && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#4ade80",
+        fontWeight: 700
+      }
+    }, "\u2713 ", pick.name, " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 8,
+        color: "#2a3555"
+      }
+    }, "(#", pick.sgRank, ")")), current && recommendation && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#93c5fd"
+      }
+    }, "\u2192 Suggest: ", recommendation.name), !done && !current && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: "#1a2535"
+      }
+    }, "Proj best avail: ", enriched[0]?.name || "—"));
+  }))), activeTab === "traded" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#2a3555",
+      letterSpacing: 2,
+      marginBottom: 12
+    }
+  }, "TRADED DRAFT PICKS \u2014 ADD ONCE CBS SPORTS UPDATES"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      marginBottom: 12,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: tradeRound,
+    onChange: e => setTradeRound(Number(e.target.value)),
+    style: {
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      color: "#d0d8ec",
+      padding: "5px 9px",
+      borderRadius: 4,
+      fontSize: 11
+    }
+  }, MY_PICK_SLOTS.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.round,
+    value: s.round
+  }, "Round ", s.round))), /*#__PURE__*/React.createElement("select", {
+    value: tradeDir,
+    onChange: e => setTradeDir(e.target.value),
+    style: {
+      background: "#0d1020",
+      border: "1px solid #1a2035",
+      color: "#d0d8ec",
+      padding: "5px 9px",
+      borderRadius: 4,
+      fontSize: 11
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "OUT"
+  }, "TRADED OUT (lost pick)"), /*#__PURE__*/React.createElement("option", {
+    value: "IN"
+  }, "TRADED IN (extra pick)")), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: () => setTradedPicks(tp => [...tp, {
+      round: tradeRound,
+      direction: tradeDir
+    }]),
+    style: {
+      background: "#1a3570",
+      color: "#93c5fd",
+      border: "1px solid #1e4080",
+      padding: "5px 14px",
+      borderRadius: 4,
+      fontSize: 10
+    }
+  }, "ADD TRADE")), tradedPicks.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#2a3555",
+      fontSize: 11
+    }
+  }, "No traded picks recorded yet. Add once CBS Sports posts the official draft order.") : tradedPicks.map((t, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      background: "#0a0c18",
+      border: "1px solid #1a2035",
+      borderRadius: 5,
+      padding: "8px 12px",
+      marginBottom: 6,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#94a3b8"
+    }
+  }, "Round ", t.round, " \u2014 ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: t.direction === "OUT" ? "#f87171" : "#4ade80"
+    }
+  }, t.direction === "OUT" ? "TRADED OUT" : "EXTRA PICK")), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: () => setTradedPicks(tp => tp.filter((_, j) => j !== i)),
+    style: {
+      background: "#1e0808",
+      color: "#f87171",
+      border: "1px solid #3c1010",
+      padding: "2px 8px",
+      borderRadius: 3,
+      fontSize: 9
+    }
+  }, "REMOVE"))))));
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(DraftTool));
+  </script>
+</body>
+</html>
